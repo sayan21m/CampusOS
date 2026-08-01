@@ -8,18 +8,18 @@
 
 ---
 
-| | |
-|---|---|
-| **Project Name** | CampusOS |
-| **Document Type** | Product Requirements Document (PRD) |
-| **Version** | 1.0 |
-| **Team Name** | *[Your Team Name]* |
-| **Team Members** | *[Name 1], [Name 2], [Name 3], [Name 4]* |
-| **Guide / Mentor** | *[Faculty Guide Name]* |
-| **Department** | Computer Science & Engineering |
-| **Institution** | *[Your College Name]* |
-| **Date** | 1 August 2026 |
-| **Status** | Draft for Review |
+| |                                                                        |
+|---|------------------------------------------------------------------------|
+| **Project Name** | CampusOS                                                               |
+| **Document Type** | Product Requirements Document (PRD)                                    |
+| **Version** | 1.0                                                                    |
+| **Team Name** | *Spark Squad*                                                          |
+| **Team Members** | *Sayan Garai, Soumili Hazra, Suprit Mukhopadhyay, Akash Sen, Aritra Ghosh* |
+| **Guide / Mentor** | *JM*                                                                   |
+| **Department** | Information Technology                                                 |
+| **Institution** | *MCKV Institute of Engineering*                                        |
+| **Date** | 1 August 2026                                                          |
+| **Status** | Draft for Review                                                       |
 
 ---
 
@@ -1343,13 +1343,13 @@ CampusOS is our attempt at the second one.
 
 **CampusOS — Product Requirements Document · Version 1.0**
 
-*Prepared by [Team Name] · [College Name] · 1 August 2026*
+*Prepared by Spark Squad · MCKVIE · 1 August 2026*
 
 ---
 
-| Prepared By | Reviewed By | Approved By |
-|---|---|---|
-| *[Team Members]* | *[Faculty Guide]* | *[HOD / Project Coordinator]* |
-| Date: ____________ | Date: ____________ | Date: ____________ |
+| Prepared By           | Reviewed By        | Approved By        |
+|-----------------------|--------------------|--------------------|
+| *Sayan Garai*         | *Pending*          | *Pending*          |
+| Date: 1st August 2026 | Date: ____________ | Date: ____________ |
 
 </div>
