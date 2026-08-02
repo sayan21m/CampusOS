@@ -21,6 +21,26 @@
     "doc": "docs"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node apps/backend/src/index.js",
+    "dev": "nodemon apps/backend/src/index.js",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:watch:coverage": "jest --watch --coverage",
+    "test:watch:watchAll": "jest --watch --watchAll",
+    "test:watch:watchAll:coverage": "jest --watch --watchAll --coverage"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prettier": "3.9.6"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
   }
 }
