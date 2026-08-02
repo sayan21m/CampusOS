@@ -1,0 +1,26 @@
+{
+  "name": "campus_os",
+  "version": "1.0.0",
+  "description": "CampusOS reimagines college management by bringing academics, collaboration, and campus services together in one intuitive platform built for modern educational institutions.",
+  "keywords": [
+    "campus-management"
+  ],
+  "homepage": "https://github.com/sayan21m/CampusOS#readme",
+  "bugs": {
+    "url": "https://github.com/sayan21m/CampusOS/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sayan21m/CampusOS.git"
+  },
+  "license": "ISC",
+  "author": "Spark Squad",
+  "type": "module",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
