@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: campusos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: campusos
+      POSTGRES_PASSWORD: campusos_dev
+      POSTGRES_DB: campus_os
+    ports:
+      - "5432:5432"
+    volumes:
+      - campusos_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  campusos_postgres_data:
