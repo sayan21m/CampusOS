@@ -1,0 +1,141 @@
+.login-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(circle at top left, #e8f3ef 0%, transparent 42%),
+    #f4f7f6;
+}
+
+.login-card {
+  width: min(100%, 420px);
+  background: #ffffff;
+  border: 1px solid #d7e0dc;
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: 0 16px 40px rgba(18, 42, 36, 0.08);
+  text-align: left;
+}
+
+.login-brand {
+  margin: 0 0 8px;
+  color: #0f6b57;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-card h1 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+  color: #12241f;
+}
+
+.login-subtitle {
+  margin: 0 0 24px;
+  color: #4d625c;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1c332d;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c5d2cd;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  color: #12241f;
+  background: #fff;
+}
+
+.field input:focus {
+  outline: 2px solid #0f6b57;
+  outline-offset: 2px;
+  border-color: #0f6b57;
+}
+
+.password-row {
+  display: flex;
+  gap: 8px;
+}
+
+.password-row input {
+  flex: 1;
+}
+
+.toggle-password,
+.submit-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.toggle-password {
+  border: 1px solid #c5d2cd;
+  background: #f7faf8;
+  color: #1c332d;
+  border-radius: 10px;
+  padding: 0 14px;
+  min-width: 72px;
+}
+
+.toggle-password:focus-visible,
+.submit-button:focus-visible {
+  outline: 2px solid #0f6b57;
+  outline-offset: 2px;
+}
+
+.submit-button {
+  margin-top: 4px;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: #0f6b57;
+  color: #fff;
+  font-weight: 650;
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1f0;
+  color: #9f2d22;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 18px;
+  }
+
+  .login-card h1 {
+    font-size: 1.7rem;
+  }
+}
