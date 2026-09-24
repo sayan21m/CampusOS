@@ -7,12 +7,14 @@ datasource db {
 }
 
 model User {
-    user_id Int @id @default(autoincrement())
-    name String
-    email String @unique
-    passwordHash String
-    role String
-    isActive Boolean  @default(true)
-    lastLogin DateTime?
-    createdAt DateTime @default(now())
+    user_id            Int      @id @default(autoincrement())
+    name               String
+    email              String   @unique
+    passwordHash       String
+    role               String
+    isActive            Boolean  @default(true)
+    failedLoginAttempts Int      @default(0)
+    lockedUntil         DateTime?
+    lastLogin           DateTime?
+    createdAt           DateTime @default(now())
 }
