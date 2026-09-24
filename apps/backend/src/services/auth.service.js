@@ -113,3 +113,44 @@ export async function loginUser({ email, password }) {
       },
   };
 }
+
+export async function changePassword(userId, {currentPassword, newPassword}) {
+    const user = await prisma.user.findUnique({
+        where: {
+            user_id: userId,
+        }
+    });
+
+    if (!user) {
+        throw createError("User not found", 404);
+    }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+        throw new Error("Account temporarily locked. Try again later.");
+    }
+
+    const passwordValid = await verifyPassword(
+        currentPassword,
+        user.passwordHash,
+    );
+
+    if (!passwordValid) {
+        throw new Error("Current password is incorrect");
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    await prisma.user.update({
+        where: {
+            user_id: user.user_id,
+        },
+        data: {
+            passwordHash: newPasswordHash,
+        }
+    })
+
+    return {
+        message: "Password changed successfully",
+    };
+
+}
