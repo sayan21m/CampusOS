@@ -1,9 +1,11 @@
 import prisma from "../config/db.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateToken } from "../utils/jwt.js";
+import crypto from "crypto";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
+const EXPIRE_DURATION_MS = 60 * 60 * 1000;
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -153,4 +155,48 @@ export async function changePassword(userId, {currentPassword, newPassword}) {
         message: "Password changed successfully",
     };
 
+}
+
+export async function forgotPassword(email) {
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    });
+
+    if (!user) {
+        throw new Error("Invalid email");
+    }
+
+    const existingToken = await prisma.passwordResetToken.findFirst({
+        where: {
+            userId: user.user_id,
+            usedAt: null,
+            expiresAt: {
+                gt: new Date(),
+            },
+        },
+    });
+
+    if (existingToken) {
+        throw new Error("A password reset token is already active");
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+    await prisma.passwordResetToken.create({
+        data: {
+            tokenHash: tokenHash,
+            userId: user.user_id,
+            expiresAt: new Date(Date.now() + EXPIRE_DURATION_MS),
+        }
+    })
+
+    return {
+        token: token
+    }
 }

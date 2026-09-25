@@ -20,3 +20,7 @@ export const changePasswordSchema = z.object({
       .string()
       .min(8, "New password must be at least 8 characters"),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Valid email is required"),
+})

@@ -17,4 +17,18 @@ model User {
     lockedUntil         DateTime?
     lastLogin           DateTime?
     createdAt           DateTime @default(now())
+
+    passwordResetTokens passwordResetToken[]
+}
+
+model passwordResetToken {
+  id Int @id @default(autoincrement())
+  tokenHash String @unique
+  userId Int
+  usedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [user_id], onDelete: Cascade)
+  @@index([userId])
 }
