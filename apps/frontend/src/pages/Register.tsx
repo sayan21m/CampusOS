@@ -1,51 +1,17 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom"; // Added Link
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { loginUser } from "../services/auth";
-import "./Login.css";
+import "./Login.css"; 
 
-const SUPPORTED_ROLES: Record<string, string> = {
-  STUDENT: "/dashboard",
-  FACULTY: "/dashboard",
-  ADMIN: "/dashboard",
-};
-
-interface ApiErrorResponse {
-  response?: {
-    data?: {
-      message?: string;
-      errors?: Array<{ message: string }>;
-    };
-  };
-}
-
-function getErrorMessage(error: unknown): string {
-  const err = error as ApiErrorResponse;
-  
-  if (!err.response) {
-    return "CampusOS is unavailable right now. Check your connection and try again.";
-  }
-
-  const data = err.response.data;
-
-  if (Array.isArray(data?.errors) && data.errors.length > 0) {
-    return data.errors.map((issue) => issue.message).join(" ");
-  }
-
-  if (typeof data?.message === "string" && data.message.trim()) {
-    return data.message;
-  }
-
-  return "Login failed. Please try again.";
-}
-
-export default function Login(): React.JSX.Element {
+export default function Register(): React.JSX.Element {
   const auth = useAuth() as { isAuthenticated: boolean; login: (data: { token: string; user: any }) => void };
-  const { isAuthenticated, login } = auth;
+  const { isAuthenticated } = auth;
   const navigate = useNavigate();
   
+  const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -58,36 +24,28 @@ export default function Login(): React.JSX.Element {
     event.preventDefault();
     setError("");
 
+    const trimmedName = name.trim();
     const trimmedEmail = email.trim();
 
-    if (!trimmedEmail || !password) {
-      setError("Enter both your institutional email and password.");
+    if (!trimmedName || !trimmedEmail || !password || !confirmPassword) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please check and try again.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const data: any = await loginUser({
-        email: trimmedEmail,
-        password,
-      });
-
-      const role = data?.user?.role;
-      const destination = SUPPORTED_ROLES[role];
-
-      if (!data?.token || !data?.user || !destination) {
-        setError("Login succeeded, but this account role is not authorized for portal access.");
-        return;
-      }
-
-      login({
-        token: data.token,
-        user: data.user,
-      });
-      navigate(destination, { replace: true });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      
+      // Redirect user back to login after successful mock registration
+      navigate("/login", { replace: true });
     } catch (requestError) {
-      setError(getErrorMessage(requestError));
+      setError("Registration failed. Please try again later.");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,10 +57,10 @@ export default function Login(): React.JSX.Element {
       <section className="campus-hero-panel">
         <div className="hero-content">
           <div className="badge-pill">🏛️ Institutional Portal</div>
-          <h1>Welcome to CampusOS</h1>
+          <h1>Join CampusOS</h1>
           <p>
-            Your complete academic ecosystem. Centralizing notices, notes, assignment submissions, 
-            and real-time attendance tracking in one seamless operating system.
+            Set up your academic profile to access centralized notices, study materials, assignment portals, 
+            and real-time attendance tracking.
           </p>
 
           <div className="campus-stats-grid">
@@ -126,17 +84,32 @@ export default function Login(): React.JSX.Element {
         </div>
       </section>
 
-      {/* Right Login Form Panel */}
-      <section className="login-card-section" aria-labelledby="login-title">
+      {/* Right Register Form Panel */}
+      <section className="login-card-section" aria-labelledby="register-title">
         <div className="login-card">
           <div className="login-header">
-            <h2 id="login-title">Sign in to portal</h2>
+            <h2 id="register-title">Create an account</h2>
             <p className="login-subtitle">
-              Enter your official college credentials to continue.
+              Enter your details to register for your institutional account.
             </p>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <div className="field">
+              <label htmlFor="name">Full Name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="John Doe"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
             <div className="field">
               <label htmlFor="email">Institutional Email</label>
               <input
@@ -153,19 +126,14 @@ export default function Login(): React.JSX.Element {
             </div>
 
             <div className="field">
-              <div className="label-row">
-                <label htmlFor="password">Password</label>
-                <a href="#forgot" className="forgot-link" onClick={(e) => e.preventDefault()}>
-                  Forgot password?
-                </a>
-              </div>
+              <label htmlFor="password">Password</label>
               <div className="password-row">
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={isSubmitting}
@@ -183,6 +151,21 @@ export default function Login(): React.JSX.Element {
               </div>
             </div>
 
+            <div className="field">
+              <label htmlFor="confirmPassword">Confirm Password</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
             {error && (
               <p className="form-error" role="alert">
                 ⚠️ {error}
@@ -190,16 +173,15 @@ export default function Login(): React.JSX.Element {
             )}
 
             <button className="submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Authenticating session…" : "Sign in to Dashboard"}
+              {isSubmitting ? "Creating account…" : "Register Account"}
             </button>
           </form>
 
-          {/* Added Register Link Section */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>
             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Don't have an account?{" "}
-              <Link to="/register" className="forgot-link">
-                Create an account
+              Already have an account?{" "}
+              <Link to="/login" className="forgot-link">
+                Sign in
               </Link>
             </p>
           </div>
