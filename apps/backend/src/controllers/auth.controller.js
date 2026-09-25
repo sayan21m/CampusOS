@@ -1,4 +1,10 @@
-import { registerUser, loginUser, changePassword, forgotPassword } from "../services/auth.service.js";
+import {
+  registerUser,
+  loginUser,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+} from "../services/auth.service.js";
 
 export async function register(req, res) {
   try {
@@ -50,6 +56,19 @@ export async function changePasswordController(req, res) {
 export async function forgotPasswordController(req, res) {
   try {
     const result = await forgotPassword(req.body.email);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+
+    res.status(error.statusCode || 401).json({
+      message: error.message,
+    });
+  }
+}
+
+export async function resetPasswordController(req, res) {
+  try {
+    const result = await resetPassword(req.body.token, req.body.newPassword);
     res.status(200).json(result);
   } catch (error) {
     console.error(error);
