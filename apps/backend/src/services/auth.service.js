@@ -1,6 +1,12 @@
 import prisma from "../config/db.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateToken } from "../utils/jwt.js";
+import { sendMail } from "./sendMail.service.js";
+import crypto from "crypto";
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000;
+const EXPIRE_DURATION_MS = 60 * 60 * 1000;
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -46,17 +52,42 @@ export async function loginUser({ email, password }) {
   });
 
   if (!user) {
-    throw createError("Invalid email or password", 401);
+    throw new Error("Invalid email or password");
   }
 
-  if (!user.isActive) {
-    throw createError("Account is deactivated", 403);
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Account temporarily locked. Try again later.");
   }
 
   const passwordValid = await verifyPassword(password, user.passwordHash);
 
   if (!passwordValid) {
-    throw createError("Invalid email or password", 401);
+    const failedAttempts = user.failedLoginAttempts + 1;
+
+    if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+      await prisma.user.update({
+        where: {
+          user_id: user.user_id,
+        },
+        data: {
+          failedLoginAttempts: failedAttempts,
+          lockedUntil: new Date(Date.now() + LOCK_DURATION_MS),
+        },
+      });
+
+      throw new Error("Account temporarily locked. Try again later.");
+    }
+
+    await prisma.user.update({
+      where: {
+        user_id: user.user_id,
+      },
+      data: {
+        failedLoginAttempts: failedAttempts,
+      },
+    });
+
+    throw new Error("Invalid email or password");
   }
 
   await prisma.user.update({
@@ -64,6 +95,8 @@ export async function loginUser({ email, password }) {
       user_id: user.user_id,
     },
     data: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
       lastLogin: new Date(),
     },
   });
@@ -78,5 +111,197 @@ export async function loginUser({ email, password }) {
       email: user.email,
       role: user.role,
     },
+  };
+}
+
+export async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await prisma.user.findUnique({
+    where: {
+      user_id: userId,
+    },
+  });
+
+  if (!user) {
+    throw createError("User not found", 404);
+  }
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Account temporarily locked. Try again later.");
+  }
+
+  const passwordValid = await verifyPassword(currentPassword, user.passwordHash);
+
+  if (!passwordValid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: {
+      user_id: user.user_id,
+    },
+    data: {
+      passwordHash: newPasswordHash,
+    },
+  });
+
+  return {
+    message: "Password changed successfully",
+  };
+}
+
+export async function forgotPassword(email) {
+  const user = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+
+  if (!user) {
+    throw new Error("Invalid email");
+  }
+
+  const existingToken = await prisma.passwordResetToken.findFirst({
+    where: {
+      userId: user.user_id,
+      usedAt: null,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (existingToken) {
+    throw new Error("A password reset token is already active");
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const resetToken = await prisma.passwordResetToken.create({
+    data: {
+      tokenHash: tokenHash,
+      userId: user.user_id,
+      expiresAt: new Date(Date.now() + EXPIRE_DURATION_MS),
+    },
+  });
+
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  try {
+    await sendMail({
+      to: user.email,
+      subject: "Reset your CampusOS password",
+      html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h2 style="color: #222;">Reset your CampusOS password</h2>
+
+                    <p>Hello ${user.name},</p>
+
+                    <p>
+                        We received a request to reset the password for your CampusOS account.
+                    </p>
+
+                    <p>
+                        Click the button below to create a new password:
+                    </p>
+
+                    <div style="margin: 32px 0;">
+                        <a
+                            href="${resetLink}"
+                            style="
+                                display: inline-block;
+                                padding: 12px 24px;
+                                background-color: #2563eb;
+                                color: #ffffff;
+                                text-decoration: none;
+                                border-radius: 6px;
+                                font-weight: 600;
+                            "
+                        >
+                            Reset Password
+                        </a>
+                    </div>
+
+                    <p>
+                        This link will expire in <strong>1 hour</strong>.
+                    </p>
+
+                    <p>
+                        If you did not request a password reset, you can safely ignore
+                        this email. Your password will remain unchanged.
+                    </p>
+
+                    <p style="color: #666; font-size: 13px;">
+                        For security reasons, please do not share this link with anyone.
+                    </p>
+
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+
+                    <p style="color: #888; font-size: 12px;">
+                        This is an automated email from CampusOS. Please do not reply to this email.
+                    </p>
+                </div>
+            `,
+    });
+
+    return {
+      message: "If the email exists, a password reset link has been sent.",
+    };
+  } catch (error) {
+    await prisma.passwordResetToken.delete({
+      where: {
+        id: resetToken.id,
+      },
+    });
+
+    throw error;
+  }
+}
+
+export async function resetPassword(token, newPassword) {
+  const tokenHashCheck = crypto.createHash("sha256").update(token).digest("hex");
+
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: {
+      tokenHash: tokenHashCheck,
+    },
+  });
+
+  if (!resetToken) {
+    throw new Error("Invalid reset token");
+  }
+
+  if (resetToken.usedAt) {
+    throw new Error("Reset token has already been used");
+  }
+
+  if (resetToken.expiresAt < new Date()) {
+    throw new Error("Reset token has expired");
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: {
+      user_id: resetToken.userId,
+    },
+    data: {
+      passwordHash: newPasswordHash,
+    },
+  });
+
+  await prisma.passwordResetToken.update({
+    where: {
+      id: resetToken.id,
+    },
+    data: {
+      usedAt: new Date(),
+    },
+  });
+
+  return {
+    message: "Password reset successfully",
   };
 }

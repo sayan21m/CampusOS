@@ -2,12 +2,13 @@ import js from "@eslint/js";
 
 export default [
   js.configs.recommended,
+
   {
     ignores: [
       "node_modules/**",
-      "generated/**",
-      "dist/**",
-      "build/**",
+      "**/dist/**",
+      "**/generated/**",
+      "**/build/**",
       "coverage/**",
       ".agents/**",
       ".claude/**",
@@ -15,6 +16,7 @@ export default [
       ".devin/**",
     ],
   },
+
   {
     files: ["**/*.{js,mjs,cjs}"],
     languageOptions: {
@@ -35,6 +37,7 @@ export default [
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
+
   {
     files: ["**/*.test.{js,mjs,cjs}", "**/*.spec.{js,mjs,cjs}"],
     languageOptions: {
