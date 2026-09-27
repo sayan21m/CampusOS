@@ -159,7 +159,9 @@ export async function forgotPassword(email) {
   });
 
   if (!user) {
-    throw new Error("Invalid email");
+    return {
+        message: "If the email exists, a password reset link has been sent.",
+    };
   }
 
   const existingToken = await prisma.passwordResetToken.findFirst({
