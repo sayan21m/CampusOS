@@ -21,3 +21,12 @@ export async function requestPasswordReset({ email }) {
 
     return data;
 }
+
+export async function resetPassword({ token, newPassword }) {
+    const { data } = await api.post("/auth/reset-password", {
+        token,
+        newPassword,
+    });
+
+    return data;
+}
