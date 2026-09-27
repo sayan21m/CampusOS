@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { requestPasswordReset } from "../services/auth";
-import "./Login.css"; // Reusing clean login & auth styles
+import "./Login.css";
 
 export default function ForgotPassword(): React.JSX.Element {
   const auth = useAuth() as { isAuthenticated: boolean };
   const { isAuthenticated } = auth;
-  
+
   const [email, setEmail] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
@@ -79,8 +79,8 @@ export default function ForgotPassword(): React.JSX.Element {
           <div className="badge-pill">🏛️ Institutional Portal</div>
           <h1>Password Recovery</h1>
           <p>
-            Regain access to your CampusOS workspace securely. Enter your registered institutional 
-            email address to receive a recovery link.
+            Regain access to your CampusOS workspace securely. Update your institutional credentials
+            to continue accessing your academic ecosystem.
           </p>
 
           <div className="campus-stats-grid">
@@ -104,7 +104,7 @@ export default function ForgotPassword(): React.JSX.Element {
         </div>
       </section>
 
-      {/* Right Forgot Password Form Panel */}
+      {/* Right Form Panel */}
       <section className="login-card-section" aria-labelledby="forgot-title">
         <div className="login-card">
           <div className="login-header">
@@ -154,7 +154,7 @@ export default function ForgotPassword(): React.JSX.Element {
             )}
 
             <button className="submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Sending link…" : "Send Reset Link"}
+              {isSubmitting ? "Sending reset link…" : "Send Reset Link"}
             </button>
           </form>
 
