@@ -21,7 +21,7 @@ interface ApiErrorResponse {
 
 function getErrorMessage(error: unknown): string {
   const err = error as ApiErrorResponse;
-  
+
   if (!err.response) {
     return "CampusOS is unavailable right now. Check your connection and try again.";
   }
@@ -43,7 +43,7 @@ export default function Login(): React.JSX.Element {
   const auth = useAuth() as { isAuthenticated: boolean; login: (data: { token: string; user: any }) => void };
   const { isAuthenticated, login } = auth;
   const navigate = useNavigate();
-  
+
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -101,7 +101,7 @@ export default function Login(): React.JSX.Element {
           <div className="badge-pill">🏛️ Institutional Portal</div>
           <h1>Welcome to CampusOS</h1>
           <p>
-            Your complete academic ecosystem. Centralizing notices, notes, assignment submissions, 
+            Your complete academic ecosystem. Centralizing notices, notes, assignment submissions,
             and real-time attendance tracking in one seamless operating system.
           </p>
 
@@ -155,9 +155,9 @@ export default function Login(): React.JSX.Element {
             <div className="field">
               <div className="label-row">
                 <label htmlFor="password">Password</label>
-                <a href="#forgot" className="forgot-link" onClick={(e) => e.preventDefault()}>
+                <Link to="/forgot-password" className="forgot-link">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="password-row">
                 <input
