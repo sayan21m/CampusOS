@@ -8,15 +8,15 @@
 
 ---
 
-| | |
-|---|---|
-| **Project Name** | CampusOS |
-| **Document Type** | Market and Technical Research Report |
-| **Version** | 1.0 |
-| **Team Name** | Spark Squad |
-| **Date** | 3 August 2026 |
-| **Status** | Research Complete |
-| **Purpose** | Understand existing products, gaps, and technical direction before building CampusOS |
+|                   |                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| **Project Name**  | CampusOS                                                                             |
+| **Document Type** | Market and Technical Research Report                                                 |
+| **Version**       | 1.0                                                                                  |
+| **Team Name**     | Spark Squad                                                                          |
+| **Date**          | 3 August 2026                                                                        |
+| **Status**        | Research Complete                                                                    |
+| **Purpose**       | Understand existing products, gaps, and technical direction before building CampusOS |
 
 ---
 
@@ -32,25 +32,25 @@
 
 ## Document Revision History
 
-| Version | Date | Author | Change |
-|---|---|---|---|
-| 1.0 | 3 August 2026 | CampusOS Team | First complete research report |
+| Version | Date          | Author        | Change                         |
+| ------- | ------------- | ------------- | ------------------------------ |
+| 1.0     | 3 August 2026 | CampusOS Team | First complete research report |
 
 ## Table of Contents
 
-| Section | Title |
-|---|---|
-| 1 | Overview |
-| 2 | Existing Products |
-| 3 | Feature Comparison |
-| 4 | Common Problems |
-| 5 | Current Industry Trends (2026) |
-| 6 | Feature Gap Analysis |
-| 7 | Best UI/UX Practices |
-| 8 | Technical Architecture |
-| 9 | Security Features |
-| 10 | Recommendations for CampusOS |
-| 11 | References |
+| Section | Title                          |
+| ------- | ------------------------------ |
+| 1       | Overview                       |
+| 2       | Existing Products              |
+| 3       | Feature Comparison             |
+| 4       | Common Problems                |
+| 5       | Current Industry Trends (2026) |
+| 6       | Feature Gap Analysis           |
+| 7       | Best UI/UX Practices           |
+| 8       | Technical Architecture         |
+| 9       | Security Features              |
+| 10      | Recommendations for CampusOS   |
+| 11      | References                     |
 
 <div style="page-break-after: always;"></div>
 
@@ -88,11 +88,11 @@ CampusOS sits closer to a **student-facing campus management platform** with sel
 
 These three terms are often mixed up. They are related, but they solve different problems.
 
-| System | Full Form | Main Job | Typical Users | Example Data |
-|---|---|---|---|---|
-| **LMS** | Learning Management System | Deliver teaching and learning | Faculty, students | Course content, assignments, quizzes, discussion forums |
-| **SIS** | Student Information System | Keep official student records | Registrars, admins, advisers | Enrolment, transcripts, grades as official record, attendance history |
-| **ERP** | Enterprise Resource Planning | Run institution-wide operations | Finance, HR, leadership, admins | Fees, payroll, procurement, plus often SIS modules |
+| System  | Full Form                    | Main Job                        | Typical Users                   | Example Data                                                          |
+| ------- | ---------------------------- | ------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| **LMS** | Learning Management System   | Deliver teaching and learning   | Faculty, students               | Course content, assignments, quizzes, discussion forums               |
+| **SIS** | Student Information System   | Keep official student records   | Registrars, admins, advisers    | Enrolment, transcripts, grades as official record, attendance history |
+| **ERP** | Enterprise Resource Planning | Run institution-wide operations | Finance, HR, leadership, admins | Fees, payroll, procurement, plus often SIS modules                    |
 
 A useful analogy used in industry guides:
 
@@ -132,18 +132,19 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.1 ERPNext Education / Frappe Education
 
-| Field | Detail |
-|---|---|
-| **Type** | Open-source Education Management System (also sold via cloud hosting) |
-| **Official site** | https://frappe.io/erpnext/for-education |
-| **GitHub** | https://github.com/frappe/education |
-| **License** | GNU GPL v3 (open source) |
+| Field             | Detail                                                                |
+| ----------------- | --------------------------------------------------------------------- |
+| **Type**          | Open-source Education Management System (also sold via cloud hosting) |
+| **Official site** | https://frappe.io/erpnext/for-education                               |
+| **GitHub**        | https://github.com/frappe/education                                   |
+| **License**       | GNU GPL v3 (open source)                                              |
 
 **Overview (verified):** Frappe Education is an open-source education management system built on the ERPNext / Frappe ecosystem. It covers admissions, student and teacher profiles, fee structures, course scheduling, attendance, assessments, and a student portal.
 
 **Target users:** Schools, colleges, and private educational institutes that want an affordable, customisable platform.
 
 **Major features (verified from GitHub and Frappe docs):**
+
 - Student and teacher management
 - Admission workflows
 - Fee structure and payments
@@ -154,22 +155,26 @@ This section covers major commercial and open-source products. For each product,
 - Reports (attendance, fees, assessments)
 
 **Technology stack (verified):**
+
 - Backend: Python (Frappe Framework)
 - Frontend: JavaScript / Vue.js (Frappe UI)
 - Database: MariaDB / MySQL
 - Hosting: Self-host or Frappe Cloud
 
 **Pricing:**
+
 - Software itself: free (open source)
 - Frappe Cloud hosting: paid (vendor quotes; commonly described as site-based cloud pricing rather than per-student licensing)
 
 **Advantages:**
+
 - Full source code access
 - Strong customisation through DocTypes and workflows
 - API-first design
 - Active open-source community
 
 **Disadvantages / limitations:**
+
 - Setup and customisation require technical skill
 - UI is functional but not always “consumer-app polished”
 - Education features are strong for admin workflows; deep LMS features may still need a separate tool
@@ -180,11 +185,11 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.2 Fedena
 
-| Field | Detail |
-|---|---|
-| **Type** | School / college management ERP |
-| **Vendor** | Foradian Technologies |
-| **Official site** | https://fedena.com/ |
+| Field                     | Detail                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Type**                  | School / college management ERP                                                                                                |
+| **Vendor**                | Foradian Technologies                                                                                                          |
+| **Official site**         | https://fedena.com/                                                                                                            |
 | **Core open-source note** | Historical core modules were released open source (Apache 2.0); commercial Fedena Pro / cloud plans are the main product today |
 
 **Overview (verified):** Fedena is a web-based school and college ERP covering admissions, fees, exams, attendance, HR, hostel, transport, library, and related modules. Foradian markets it as an all-in-one institute operations platform with many plugins.
@@ -192,6 +197,7 @@ This section covers major commercial and open-source products. For each product,
 **Target users:** K-12 schools, colleges, universities, and training institutes.
 
 **Major features:**
+
 - Admissions and student information
 - Attendance and timetable
 - Examination and gradebook
@@ -204,17 +210,20 @@ This section covers major commercial and open-source products. For each product,
 **Technology stack (verified from vendor materials):** Ruby on Rails.
 
 **Pricing (reported by third-party directories; verify with vendor):**
+
 - Web plans often listed around **USD 999–1699 / year**
 - Web + mobile often listed around **USD 1599–2299 / year**
 - Enterprise: custom quote
 
 **Advantages:**
+
 - Broad module coverage
 - Relatively affordable compared with Western university ERPs
 - Plugin-based expansion
 - Multi-language support claimed by vendor
 
 **Disadvantages (reported opinion):**
+
 - Feature depth varies by plan and plugin
 - Some institutions report that “all-in-one” suites become cluttered
 - Exact current pricing requires sales contact
@@ -223,17 +232,18 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.3 Academia ERP (Serosoft)
 
-| Field | Detail |
-|---|---|
-| **Type** | Education ERP / SIS (India-focused, also international) |
-| **Vendor** | Serosoft |
-| **Official site** | https://www.academiaerp.com/ |
+| Field             | Detail                                                  |
+| ----------------- | ------------------------------------------------------- |
+| **Type**          | Education ERP / SIS (India-focused, also international) |
+| **Vendor**        | Serosoft                                                |
+| **Official site** | https://www.academiaerp.com/                            |
 
 **Overview (verified):** Academia by Serosoft is a cloud-native education ERP / SIS with portals for students, faculty, and admins. Module lists for higher education include admissions, timetable, attendance, fees, assignments, exams, hostel, transport, placement, alumni, events, and analytics.
 
 **Target users:** Universities, colleges, training organisations, and multi-campus education groups.
 
 **Major features (verified from Academia Higher Ed plans page):**
+
 - Student Information System
 - Timetable and attendance
 - Fees and examinations
@@ -246,16 +256,19 @@ This section covers major commercial and open-source products. For each product,
 **Technology stack:** Not fully disclosed in public docs. Marketed as cloud-native SaaS / licensed deployment.
 
 **Pricing:**
+
 - Not publicly fixed on the website
 - SaaS model: annual per-user subscription (details via sales)
 - One public commercial proposal example (IMI Noida, May 2025, secondary source) listed multi-year licence figures in lakhs INR for ~1500 students — treat as **illustrative only**, not a standard price list
 
 **Advantages:**
+
 - Strong coverage for Indian higher-education workflows
 - Many modules in one suite
 - Dedicated portals and mobile apps
 
 **Disadvantages:**
+
 - Pricing opacity
 - Implementation and change management still required
 - Overlaps many modules CampusOS does **not** need for V1 (fees, hostel, payroll)
@@ -264,10 +277,10 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.4 Ellucian Banner / Ellucian Student
 
-| Field | Detail |
-|---|---|
-| **Type** | Enterprise higher-education ERP / SIS |
-| **Official site** | https://www.ellucian.com/ |
+| Field                    | Detail                                        |
+| ------------------------ | --------------------------------------------- |
+| **Type**                 | Enterprise higher-education ERP / SIS         |
+| **Official site**        | https://www.ellucian.com/                     |
 | **Scale (vendor claim)** | ~3,000 customers, 50 countries, 21M+ students |
 
 **Overview (verified):** Ellucian provides Banner and related Student / HCM / Finance products for higher education. It covers the student lifecycle (admissions, records, financial aid, billing) plus institutional finance and HR in the broader suite.
@@ -275,6 +288,7 @@ This section covers major commercial and open-source products. For each product,
 **Target users:** Colleges and universities (especially US and large international institutions).
 
 **Major features:**
+
 - Student Information System
 - Admissions and registration
 - Financial aid
@@ -287,15 +301,18 @@ This section covers major commercial and open-source products. For each product,
 **Technology stack:** Proprietary enterprise stack; historically Oracle-database oriented for Banner; cloud/SaaS options available.
 
 **Pricing:**
+
 - **Not published publicly**
 - Third-party estimates for implementation often range from tens of thousands to millions USD depending on size — treat as **estimates**, not official quotes
 
 **Advantages:**
+
 - Deep higher-ed domain coverage
 - Strong compliance / reporting focus (FERPA and related institutional needs)
 - Large partner ecosystem
 
 **Disadvantages (reported opinions from Software Advice / review aggregators):**
+
 - Steep learning curve
 - Older Banner screens often described as acronym-heavy and hard to navigate
 - Expensive licensing and long implementations
@@ -308,17 +325,18 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.5 PowerSchool SIS
 
-| Field | Detail |
-|---|---|
-| **Type** | Student Information System (primarily K-12) |
-| **Official site** | https://www.powerschool.com/ |
-| **Scale (reported)** | Tens of millions of students worldwide |
+| Field                | Detail                                      |
+| -------------------- | ------------------------------------------- |
+| **Type**             | Student Information System (primarily K-12) |
+| **Official site**    | https://www.powerschool.com/                |
+| **Scale (reported)** | Tens of millions of students worldwide      |
 
 **Overview (verified):** PowerSchool is the dominant K-12 SIS for enrolment, attendance, grading, scheduling, and compliance reporting. It is sometimes discussed in higher-ed comparisons, but its core strength is school districts, not universities.
 
 **Target users:** K-12 schools and districts; limited direct fit for Indian college workflows.
 
 **Major features:**
+
 - Student demographics and enrolment
 - Attendance and scheduling
 - Gradebook (PowerTeacher Pro)
@@ -336,16 +354,17 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.6 Blackbaud (Higher Education / Education Management)
 
-| Field | Detail |
-|---|---|
-| **Type** | Connected campus suite (SIS + LMS + enrolment + billing) |
-| **Official site** | https://www.blackbaud.com/ |
+| Field             | Detail                                                   |
+| ----------------- | -------------------------------------------------------- |
+| **Type**          | Connected campus suite (SIS + LMS + enrolment + billing) |
+| **Official site** | https://www.blackbaud.com/                               |
 
 **Overview (verified):** Blackbaud markets a “Connected Campus” combining enrolment management, SIS, LMS, and billing so students and faculty use one ecosystem for applications, courses, assignments, grades, and tuition.
 
 **Target users:** Especially private K-12 and higher-ed institutions in Blackbaud’s market.
 
 **Major features:**
+
 - Enrolment / admissions workflows
 - Student information and attendance
 - LMS tools (assignments, gradebook, calendaring)
@@ -362,17 +381,18 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.7 Oracle PeopleSoft Campus Solutions
 
-| Field | Detail |
-|---|---|
-| **Type** | Enterprise Campus Solutions / SIS |
+| Field             | Detail                                                |
+| ----------------- | ----------------------------------------------------- |
+| **Type**          | Enterprise Campus Solutions / SIS                     |
 | **Official site** | https://www.oracle.com/ (PeopleSoft Campus Solutions) |
-| **Docs** | Oracle PeopleSoft Campus Solutions documentation |
+| **Docs**          | Oracle PeopleSoft Campus Solutions documentation      |
 
 **Overview (verified):** PeopleSoft Campus Solutions manages recruiting, admissions, student records, academic advisement, financial aid, and student financials. Oracle continues to deliver quarterly feature updates. Self-service is available as a related product.
 
 **Target users:** Large and complex universities, often multi-campus.
 
 **Major features:**
+
 - Campus Community (person / org master data)
 - Recruiting and Admissions
 - Student Records
@@ -393,17 +413,18 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.8 TCS iON Digital Campus
 
-| Field | Detail |
-|---|---|
-| **Type** | Modular Digital Campus / education ERP |
-| **Official site** | https://www.tcsion.com/ |
-| **Product page** | TCS iON Digital Campus |
+| Field             | Detail                                 |
+| ----------------- | -------------------------------------- |
+| **Type**          | Modular Digital Campus / education ERP |
+| **Official site** | https://www.tcsion.com/                |
+| **Product page**  | TCS iON Digital Campus                 |
 
 **Overview (verified from TCS iON product pages and brochure):** TCS iON Digital Campus digitises student lifecycle (admission, fees, timetable, attendance, exams, library, hostel, transport), faculty lifecycle (leave, payroll, appraisal, academic tasks), and institute administration (finance, HR, procurement).
 
 **Target users:** Indian schools, colleges, and universities seeking a large-vendor managed platform.
 
 **Major features:**
+
 - Admissions and student affairs
 - Timetable and attendance
 - Exam planning, scoring, results
@@ -424,17 +445,18 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.9 Teachmint
 
-| Field | Detail |
-|---|---|
-| **Type** | Mobile-first Integrated School Platform (ISP) |
-| **Official site** | https://www.teachmint.com/ |
-| **Vendor claim** | 15M+ users, 25+ countries (from company careers / marketing materials) |
+| Field             | Detail                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| **Type**          | Mobile-first Integrated School Platform (ISP)                          |
+| **Official site** | https://www.teachmint.com/                                             |
+| **Vendor claim**  | 15M+ users, 25+ countries (from company careers / marketing materials) |
 
 **Overview (verified from product directories):** Teachmint combines school administration (SIS-like tools, fees, admissions, exams) with LMS and live-class features in a mobile-first product.
 
 **Target users:** Schools and institutes that want admin + live teaching in one app-heavy product.
 
 **Major features:**
+
 - Student information
 - Live classes / LMS
 - Fee management
@@ -455,9 +477,9 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.1.10 Campus365
 
-| Field | Detail |
-|---|---|
-| **Type** | All-in-one School ERP |
+| Field             | Detail                    |
+| ----------------- | ------------------------- |
+| **Type**          | All-in-one School ERP     |
 | **Official site** | https://www.campus365.io/ |
 
 **Overview (verified from features page):** Campus365 provides dashboards for teachers, students, parents, and management. Modules include timetable, attendance, exams, gradebooks, notices, hostel, library, transport, calendar, events, HR/payroll, finance/fees, LMS features, alumni, and campus recruitment.
@@ -465,6 +487,7 @@ This section covers major commercial and open-source products. For each product,
 **Target users:** K-12, higher-ed, and training institutes.
 
 **Major features:**
+
 - Paperless admissions and online fees
 - SIS, attendance (including ID-card scanning claims)
 - Notice boards and portals
@@ -485,18 +508,19 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.2.1 OpenEduCat
 
-| Field | Detail |
-|---|---|
-| **Type** | Open-source Educational ERP |
-| **Official site** | https://openeducat.org/ |
-| **GitHub** | https://github.com/openeducat/openeducat_erp |
-| **License** | LGPL v3 (Community); Enterprise modules separate |
+| Field             | Detail                                           |
+| ----------------- | ------------------------------------------------ |
+| **Type**          | Open-source Educational ERP                      |
+| **Official site** | https://openeducat.org/                          |
+| **GitHub**        | https://github.com/openeducat/openeducat_erp     |
+| **License**       | LGPL v3 (Community); Enterprise modules separate |
 
 **Overview (verified):** OpenEduCat is built on the Odoo framework and covers admissions, student information, courses/batches, exams, fees, attendance, timetable, library, transport, hostel, communication, HR, and analytics. Community vs Enterprise feature split exists (biometric, multi-campus, advanced analytics often enterprise).
 
 **Target users:** Schools and colleges wanting Odoo-based education ERP.
 
 **Technology stack (verified):**
+
 - Python
 - PostgreSQL
 - Odoo / OWL frontend
@@ -512,18 +536,19 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.2.2 Moodle
 
-| Field | Detail |
-|---|---|
-| **Type** | World’s most widely used open-source LMS |
-| **Official site** | https://moodle.org/ |
-| **GitHub** | https://github.com/moodle/moodle |
-| **License** | GPL v3 |
+| Field             | Detail                                   |
+| ----------------- | ---------------------------------------- |
+| **Type**          | World’s most widely used open-source LMS |
+| **Official site** | https://moodle.org/                      |
+| **GitHub**        | https://github.com/moodle/moodle         |
+| **License**       | GPL v3                                   |
 
 **Overview (verified):** Moodle is a learning platform for courses, activities, quizzes, assignments, gradebooks, forums, and plugins. It is **not** a full college ERP/SIS.
 
 **Target users:** Schools, universities, and corporate training.
 
 **Major features:**
+
 - Course content and activities
 - Assignments and quizzes
 - Gradebook
@@ -545,12 +570,12 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.2.3 Chamilo
 
-| Field | Detail |
-|---|---|
-| **Type** | Open-source LMS |
-| **Official site** | https://chamilo.org |
-| **GitHub** | https://github.com/chamilo/chamilo-lms |
-| **License** | GPL v3 |
+| Field             | Detail                                 |
+| ----------------- | -------------------------------------- |
+| **Type**          | Open-source LMS                        |
+| **Official site** | https://chamilo.org                    |
+| **GitHub**        | https://github.com/chamilo/chamilo-lms |
+| **License**       | GPL v3                                 |
 
 **Overview (verified):** Chamilo is a lighter LMS alternative to Moodle, with courses, quizzes, announcements, skills, APIs, and security features including MFA support in modern versions.
 
@@ -564,15 +589,16 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.2.4 Sakai
 
-| Field | Detail |
-|---|---|
-| **Type** | Open-source higher-ed LMS / collaboration environment |
-| **Docs / intro** | Apereo Sakai project documentation |
-| **License** | Educational Community License 2.0 (ECL-2.0) |
+| Field            | Detail                                                |
+| ---------------- | ----------------------------------------------------- |
+| **Type**         | Open-source higher-ed LMS / collaboration environment |
+| **Docs / intro** | Apereo Sakai project documentation                    |
+| **License**      | Educational Community License 2.0 (ECL-2.0)           |
 
 **Overview (verified):** Sakai provides course sites with assignments, gradebook, tests/quizzes, lessons, forums, calendar, announcements, and chat. Built by and for higher education communities.
 
 **Technology stack (verified from Sakai docs):**
+
 - Java 17
 - Apache Tomcat
 - Spring Framework
@@ -588,12 +614,12 @@ This section covers major commercial and open-source products. For each product,
 
 ### 2.2.5 openSIS (OS4ED)
 
-| Field | Detail |
-|---|---|
-| **Type** | Open-source Student Information System |
-| **Official site** | https://www.os4ed.com / https://opensis.com |
-| **GitHub** | https://github.com/OS4ED/openSIS-Classic |
-| **License** | GPL |
+| Field                 | Detail                                               |
+| --------------------- | ---------------------------------------------------- |
+| **Type**              | Open-source Student Information System               |
+| **Official site**     | https://www.os4ed.com / https://opensis.com          |
+| **GitHub**            | https://github.com/OS4ED/openSIS-Classic             |
+| **License**           | GPL                                                  |
 | **Community edition** | v9.3 (release note dated June 2026 on GitHub README) |
 
 **Overview (verified):** openSIS Classic manages student/staff/school data, courses, scheduling, attendance, grades, teacher gradebook, report cards, transcripts, and built-in communication. Paid SaaS / Professional editions add more.
@@ -647,43 +673,43 @@ This section covers major commercial and open-source products. For each product,
 
 Legend:
 
-| Symbol | Meaning |
-|---|---|
-| ✅ | Supported as a core / advertised feature |
-| 🟡 | Partial, plugin, paid add-on, or limited |
-| ❌ | Not a primary focus / not typically present |
-| ? | Not clearly verified from public materials |
+| Symbol | Meaning                                     |
+| ------ | ------------------------------------------- |
+| ✅     | Supported as a core / advertised feature    |
+| 🟡     | Partial, plugin, paid add-on, or limited    |
+| ❌     | Not a primary focus / not typically present |
+| ?      | Not clearly verified from public materials  |
 
 > Comparison is based on official product pages, docs, and GitHub READMEs as of research date (Aug 2026). Implementations vary by plan and configuration.
 
-| Feature | ERPNext Ed | Fedena | Academia | Ellucian | PowerSchool | Blackbaud | PeopleSoft | TCS iON | Teachmint | Campus365 | OpenEduCat | Moodle | Chamilo | Sakai | openSIS |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Student Portal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Faculty Portal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Admin Portal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Attendance | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 | ✅ |
-| Timetable | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | ✅ | ✅ |
-| Assignments | 🟡 | ✅ | ✅ | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | ✅ | ✅ | 🟡 | ✅ | ✅ | ✅ | 🟡 |
-| Study Materials | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | ✅ | ✅ | 🟡 | ✅ | ✅ | ✅ | ❌ |
-| Notice Board | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Library | 🟡 | ✅ | 🟡 | 🟡 | ❌ | ❌ | 🟡 | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Fees | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 🟡 |
-| Examination | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Gradebook | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| AI Features | 🟡 | 🟡 | ✅ | ✅ | 🟡 | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 |
-| Hostel | 🟡 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Transport | 🟡 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Placement | 🟡 | ✅ | ✅ | 🟡 | ❌ | ❌ | 🟡 | 🟡 | ❌ | ✅ | 🟡 | ❌ | ❌ | ❌ | ❌ |
-| Alumni | 🟡 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | 🟡 | ❌ | ❌ | ❌ | ❌ |
-| Events | 🟡 | ✅ | ✅ | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | 🟡 | ✅ | 🟡 | 🟡 | 🟡 | ✅ | 🟡 |
-| Clubs | ❌ | 🟡 | 🟡 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 🟡 | ❌ | ❌ | ❌ | 🟡 | ❌ |
-| Messaging | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Notifications | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Mobile App | 🟡 | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | ✅ | ✅ | ✅ | 🟡 | ✅ | 🟡 | 🟡 | 🟡 |
-| Role-Based Access | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| API Support | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| Cloud Support | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Analytics Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 | 🟡 |
+| Feature             | ERPNext Ed | Fedena | Academia | Ellucian | PowerSchool | Blackbaud | PeopleSoft | TCS iON | Teachmint | Campus365 | OpenEduCat | Moodle | Chamilo | Sakai | openSIS |
+| ------------------- | ---------- | ------ | -------- | -------- | ----------- | --------- | ---------- | ------- | --------- | --------- | ---------- | ------ | ------- | ----- | ------- |
+| Student Portal      | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Faculty Portal      | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Admin Portal        | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Attendance          | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | 🟡     | 🟡      | 🟡    | ✅      |
+| Timetable           | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | 🟡     | 🟡      | ✅    | ✅      |
+| Assignments         | 🟡         | ✅     | ✅       | 🟡       | 🟡          | ✅        | 🟡         | 🟡      | ✅        | ✅        | 🟡         | ✅     | ✅      | ✅    | 🟡      |
+| Study Materials     | 🟡         | 🟡     | ✅       | 🟡       | 🟡          | ✅        | 🟡         | 🟡      | ✅        | ✅        | 🟡         | ✅     | ✅      | ✅    | ❌      |
+| Notice Board        | 🟡         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Library             | 🟡         | ✅     | 🟡       | 🟡       | ❌          | ❌        | 🟡         | ✅      | ❌        | ✅        | ✅         | ❌     | ❌      | ❌    | ❌      |
+| Fees                | ✅         | ✅     | ✅       | ✅       | 🟡          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ❌     | ❌      | ❌    | 🟡      |
+| Examination         | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Gradebook           | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| AI Features         | 🟡         | 🟡     | ✅       | ✅       | 🟡          | 🟡        | 🟡         | ✅      | 🟡        | 🟡        | 🟡         | 🟡     | 🟡      | 🟡    | 🟡      |
+| Hostel              | 🟡         | ✅     | ✅       | ❌       | ❌          | ❌        | ❌         | ✅      | ❌        | ✅        | ✅         | ❌     | ❌      | ❌    | ❌      |
+| Transport           | 🟡         | ✅     | ✅       | ❌       | ❌          | ❌        | ❌         | ✅      | ❌        | ✅        | ✅         | ❌     | ❌      | ❌    | ❌      |
+| Placement           | 🟡         | ✅     | ✅       | 🟡       | ❌          | ❌        | 🟡         | 🟡      | ❌        | ✅        | 🟡         | ❌     | ❌      | ❌    | ❌      |
+| Alumni              | 🟡         | ✅     | ✅       | ✅       | ❌          | ✅        | ✅         | ✅      | ❌        | ✅        | 🟡         | ❌     | ❌      | ❌    | ❌      |
+| Events              | 🟡         | ✅     | ✅       | 🟡       | 🟡          | ✅        | 🟡         | 🟡      | 🟡        | ✅        | 🟡         | 🟡     | 🟡      | ✅    | 🟡      |
+| Clubs               | ❌         | 🟡     | 🟡       | ❌       | ❌          | ❌        | ❌         | ❌      | ❌        | 🟡        | ❌         | ❌     | ❌      | 🟡    | ❌      |
+| Messaging           | 🟡         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Notifications       | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Mobile App          | 🟡         | ✅     | ✅       | ✅       | ✅          | ✅        | 🟡         | ✅      | ✅        | ✅        | 🟡         | ✅     | 🟡      | 🟡    | 🟡      |
+| Role-Based Access   | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| API Support         | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | 🟡      |
+| Cloud Support       | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | ✅     | ✅      | ✅    | ✅      |
+| Analytics Dashboard | ✅         | ✅     | ✅       | ✅       | ✅          | ✅        | ✅         | ✅      | ✅        | ✅        | ✅         | 🟡     | 🟡      | 🟡    | 🟡      |
 
 ### Reading the table for CampusOS
 
@@ -707,12 +733,14 @@ This section mixes **verified industry observations** with **reported user opini
 ## 4.1 Poor / Outdated UI
 
 **Reported opinions (Ellucian Banner reviews on Software Advice / review sites):**
+
 - Screens accessed by cryptic acronyms
 - Steep learning curve for non-technical staff
 - Portal experiences described as outdated or fragile
 - Mobile readability historically poor
 
 **Reported opinions (Blackbaud GetApp reviews):**
+
 - Creating assignments and understanding student view can be confusing
 - Reporting described as antiquated by some long-term users
 
@@ -753,6 +781,7 @@ This section mixes **verified industry observations** with **reported user opini
 ## 4.7 Limited Useful AI
 
 **Verified industry surveys:**
+
 - Ellucian’s 2025 AI in Higher Education Survey (published into 2026 discussions) found institution-wide AI adoption rising (49% → 66% in their survey window), with strongest confidence in operational analytics and cybersecurity, and more caution around high-stakes academic decisions. ([Ellucian AI Report PDF](https://lp.ellucian.com/rs/085-MHT-312/images/Ellucian_2026-AI-Report.pdf))
 
 **Gap:** Marketing often says “AI-powered,” but students rarely get a reliable assistant that answers “Where are Unit 3 DBMS notes?” using their own course files.
@@ -760,6 +789,7 @@ This section mixes **verified industry observations** with **reported user opini
 ## 4.8 Weak Search and Notifications
 
 **Common student complaint pattern (case studies / UX research):**
+
 - Critical alerts buried in menus
 - No single search across notes, notices, and assignments
 - Notification spam or no notifications at all
@@ -768,15 +798,15 @@ Canvas student co-design research emphasises that students want a **today/this-w
 
 ## 4.9 Summary of Pain Points
 
-| Pain Point | Who Feels It Most | Evidence Type |
-|---|---|---|
-| Outdated UI / acronym screens | Staff + students | User reviews |
-| Expensive licences | College management | Vendor pricing models + estimates |
-| Overbuilt modules | Everyone | Product catalogues |
-| Long implementation | IT + leadership | Implementation case patterns |
-| Poor mobile UX | Students | Reviews + UX studies |
-| Shallow AI claims | Students + admins | Industry AI surveys vs student needs |
-| Fragmented tools still remain | Students | Campus field observation + SIS/LMS split literature |
+| Pain Point                    | Who Feels It Most  | Evidence Type                                       |
+| ----------------------------- | ------------------ | --------------------------------------------------- |
+| Outdated UI / acronym screens | Staff + students   | User reviews                                        |
+| Expensive licences            | College management | Vendor pricing models + estimates                   |
+| Overbuilt modules             | Everyone           | Product catalogues                                  |
+| Long implementation           | IT + leadership    | Implementation case patterns                        |
+| Poor mobile UX                | Students           | Reviews + UX studies                                |
+| Shallow AI claims             | Students + admins  | Industry AI surveys vs student needs                |
+| Fragmented tools still remain | Students           | Campus field observation + SIS/LMS split literature |
 
 <div style="page-break-after: always;"></div>
 
@@ -791,6 +821,7 @@ Canvas student co-design research emphasises that students want a **today/this-w
 **Verified:** Higher-ed AI surveys show rising institutional adoption and dedicated budgets, with operational use cases trusted more than fully automated admissions/learning decisions. ([Ellucian 2026 AI Report](https://lp.ellucian.com/rs/085-MHT-312/images/Ellucian_2026-AI-Report.pdf), [USBA Council 2026 AI readiness summary](https://www.usbacouncil.org/post/state-of-artificial-intelligence-in-higher-education-2026-executive-readiness-investment-and-stra))
 
 **Practical chatbot uses already common in marketing:**
+
 - “When is my fee due?”
 - “What is tomorrow’s timetable?”
 - “How do I apply for a transcript?”
@@ -800,6 +831,7 @@ Canvas student co-design research emphasises that students want a **today/this-w
 ## 5.3 Predictive Analytics
 
 Common use cases in 2026 guides:
+
 - At-risk student detection (attendance + grades + engagement)
 - Enrolment forecasting
 - Resource / classroom utilisation
@@ -809,6 +841,7 @@ Common use cases in 2026 guides:
 ## 5.4 Digital Campus and Mobile-First Design
 
 Vendors increasingly sell:
+
 - One login for student services
 - Native apps or high-quality PWAs
 - Paperless admissions and online fees
@@ -818,6 +851,7 @@ Teachmint and Campus365 explicitly market mobile-first / native apps. Enterprise
 ## 5.5 QR / Biometric / Face Attendance
 
 **Verified product claims:**
+
 - Campus365 advertises ID-card scanning attendance
 - OpenEduCat Enterprise lists biometric attendance
 - Multiple AI-ERP guides describe QR attendance as a standard automation
@@ -835,6 +869,7 @@ Automatic conflict-free timetable generation appears in higher Fedena / OpenEduC
 ## 5.8 LLM Integration and RAG Knowledge Assistants
 
 Emerging pattern in education tech:
+
 - LLM chat over institutional policies
 - RAG (Retrieval-Augmented Generation) over lecture notes and FAQs
 - Human-in-the-loop for grades and admissions
@@ -843,17 +878,17 @@ Emerging pattern in education tech:
 
 ## 5.9 Trend Relevance Matrix for CampusOS
 
-| Trend | Adopt in V1? | Why |
-|---|---|---|
-| Mobile-responsive web | ✅ Yes | Students are mobile-first |
-| Notifications | ✅ Yes | Solves missed deadlines |
-| Cloud deploy (free tier) | ✅ Yes | Needed for demo |
-| Role-based dashboards | ✅ Yes | Core product |
-| QR attendance | 🟡 Later | Valuable but extra scope |
-| AI chatbot | 🟡 Later | Needs data + API cost management |
-| Face recognition | ❌ No | Privacy + complexity |
-| Full predictive analytics | ❌ No | Needs long historical data |
-| Smart timetable generator | ❌ No (V1) | Hard optimisation problem |
+| Trend                     | Adopt in V1? | Why                              |
+| ------------------------- | ------------ | -------------------------------- |
+| Mobile-responsive web     | ✅ Yes       | Students are mobile-first        |
+| Notifications             | ✅ Yes       | Solves missed deadlines          |
+| Cloud deploy (free tier)  | ✅ Yes       | Needed for demo                  |
+| Role-based dashboards     | ✅ Yes       | Core product                     |
+| QR attendance             | 🟡 Later     | Valuable but extra scope         |
+| AI chatbot                | 🟡 Later     | Needs data + API cost management |
+| Face recognition          | ❌ No        | Privacy + complexity             |
+| Full predictive analytics | ❌ No        | Needs long historical data       |
+| Smart timetable generator | ❌ No (V1)   | Hard optimisation problem        |
 
 <div style="page-break-after: always;"></div>
 
@@ -861,12 +896,12 @@ Emerging pattern in education tech:
 
 ## 6.1 What Existing Systems Already Do Well
 
-| Area | Who Does It Well | Note |
-|---|---|---|
-| Official student records | Ellucian, PeopleSoft, openSIS, Academia | Hard for CampusOS to beat in V1 |
-| Fees + finance | TCS iON, Academia, Fedena, ERPNext | Out of CampusOS V1 scope by design |
-| Deep LMS coursework | Moodle, Sakai, Chamilo, Blackbaud LMS | CampusOS should not reinvent Moodle |
-| Huge module catalogues | Campus365, Fedena, OpenEduCat | Quantity ≠ student delight |
+| Area                     | Who Does It Well                        | Note                                |
+| ------------------------ | --------------------------------------- | ----------------------------------- |
+| Official student records | Ellucian, PeopleSoft, openSIS, Academia | Hard for CampusOS to beat in V1     |
+| Fees + finance           | TCS iON, Academia, Fedena, ERPNext      | Out of CampusOS V1 scope by design  |
+| Deep LMS coursework      | Moodle, Sakai, Chamilo, Blackbaud LMS   | CampusOS should not reinvent Moodle |
+| Huge module catalogues   | Campus365, Fedena, OpenEduCat           | Quantity ≠ student delight          |
 
 ## 6.2 What Is Missing or Weak
 
@@ -913,14 +948,14 @@ Open-source options exist (ERPNext Education, OpenEduCat, openSIS, Moodle), but 
 
 ## 6.3 Opportunity Summary
 
-| Opportunity | Why It Matters | CampusOS Response |
-|---|---|---|
-| Unified student home | Reduces WhatsApp dependency | Role dashboards |
-| Notes longevity | Seniors’ material vanishes every year | Notes + Semester Library |
-| Deadline reliability | Marks lost to missed announcements | Assignments + reminders |
-| Attendance transparency | Shortage discovered too late | Student attendance views + alerts |
-| Clean UX | Legacy ERPs frustrate users | Modern responsive UI |
-| Honest AI roadmap | Avoid fake “AI-powered” labels | AI only after data foundation |
+| Opportunity             | Why It Matters                        | CampusOS Response                 |
+| ----------------------- | ------------------------------------- | --------------------------------- |
+| Unified student home    | Reduces WhatsApp dependency           | Role dashboards                   |
+| Notes longevity         | Seniors’ material vanishes every year | Notes + Semester Library          |
+| Deadline reliability    | Marks lost to missed announcements    | Assignments + reminders           |
+| Attendance transparency | Shortage discovered too late          | Student attendance views + alerts |
+| Clean UX                | Legacy ERPs frustrate users           | Modern responsive UI              |
+| Honest AI roadmap       | Avoid fake “AI-powered” labels        | AI only after data foundation     |
 
 <div style="page-break-after: always;"></div>
 
@@ -929,12 +964,14 @@ Open-source options exist (ERPNext Education, OpenEduCat, openSIS, Moodle), but 
 ## 7.1 Dashboards
 
 **Research-backed pattern (Canvas student co-design):**
+
 - Answer “what do I need today / this week?” first
 - Use widgets that can expand/collapse
 - Avoid stress-inducing comparisons by default
 - Keep the interface scannable between classes
 
 **Practical CampusOS dashboard content:**
+
 1. Today’s timetable
 2. Pending assignments (sorted by deadline)
 3. Recent notices
@@ -943,6 +980,7 @@ Open-source options exist (ERPNext Education, OpenEduCat, openSIS, Moodle), but 
 ## 7.2 Navigation
 
 Best practices from LMS UX guidance:
+
 - Persistent top bar: search, notifications, profile
 - Clear primary destinations (max ~5–7 for students)
 - Bottom navigation on mobile
@@ -951,6 +989,7 @@ Best practices from LMS UX guidance:
 ## 7.3 Timetable
 
 Good patterns:
+
 - Desktop: weekly grid
 - Mobile: day list (today-first)
 - Show subject, faculty, room, time
@@ -959,10 +998,12 @@ Good patterns:
 ## 7.4 Attendance
 
 Faculty:
+
 - Default “all present,” toggle absentees only
 - Finish a class of ~60 in under 2 minutes
 
 Students:
+
 - Overall % + subject breakdown
 - Colour thresholds (e.g., below 75%)
 - Date-wise history on demand
@@ -970,15 +1011,18 @@ Students:
 ## 7.5 Assignment Workflow
 
 Clear status language:
+
 - Pending → Submitted → Late → Graded
 
 Student screen must show:
+
 - Deadline countdown
 - Upload area
 - Current status
 - Feedback after grading
 
 Faculty screen must show:
+
 - Submitted vs pending counts
 - Bulk download
 - Simple grading entry
@@ -986,31 +1030,33 @@ Faculty screen must show:
 ## 7.6 Notifications
 
 Do:
+
 - Notify on new assignment, urgent notice, attendance risk, grade release
 - Allow category preferences
 
 Don’t:
+
 - Spam for every minor update
 - Force undismissable popups
 
 ## 7.7 Mobile Experience
 
-| Practice | Example |
-|---|---|
-| Mobile-first layouts | Teachmint-style app priority |
-| Large tap targets | 44×44 px minimum |
-| Day-first timetable | Canvas mobile redesign studies |
-| Read-mostly speed | Fast glance companion pattern |
+| Practice                   | Example                           |
+| -------------------------- | --------------------------------- |
+| Mobile-first layouts       | Teachmint-style app priority      |
+| Large tap targets          | 44×44 px minimum                  |
+| Day-first timetable        | Canvas mobile redesign studies    |
+| Read-mostly speed          | Fast glance companion pattern     |
 | Progressive Web App option | Installable web app before native |
 
 ## 7.8 Inspiration Sources (not copies)
 
-| Product / Study | Steal This Idea |
-|---|---|
-| Canvas student dashboard research | Today/This Week widgets |
+| Product / Study                    | Steal This Idea                                  |
+| ---------------------------------- | ------------------------------------------------ |
+| Canvas student dashboard research  | Today/This Week widgets                          |
 | UniVerse student portal case study | Attendance + schedule + deadlines above the fold |
-| Modern school apps (Teachmint) | Mobile-first flows |
-| Notion / Linear (general UX) | Clean density, keyboard-friendly later |
+| Modern school apps (Teachmint)     | Mobile-first flows                               |
+| Notion / Linear (general UX)       | Clean density, keyboard-friendly later           |
 
 <div style="page-break-after: always;"></div>
 
@@ -1018,31 +1064,31 @@ Don’t:
 
 ## 8.1 What Real Products Use
 
-| Product | Backend | Frontend | Database |
-|---|---|---|---|
-| ERPNext Education | Python / Frappe | JS / Vue | MariaDB/MySQL |
-| OpenEduCat | Python / Odoo | OWL | PostgreSQL |
-| Fedena | Ruby on Rails | Web UI | Relational DB |
-| Moodle | PHP | Themes / JS | MySQL/MariaDB/PostgreSQL |
-| Chamilo | PHP (+ Symfony/Vue in newer lines) | Vue (newer) | MariaDB |
-| Sakai | Java / Spring | Web Components / Bootstrap | MySQL/Oracle/SQL Server |
-| openSIS Classic | PHP | Classic web UI | MySQL/MariaDB |
-| Modern indie school SaaS examples | Node/Nest/Express | React/Next | PostgreSQL + Prisma |
+| Product                           | Backend                            | Frontend                   | Database                 |
+| --------------------------------- | ---------------------------------- | -------------------------- | ------------------------ |
+| ERPNext Education                 | Python / Frappe                    | JS / Vue                   | MariaDB/MySQL            |
+| OpenEduCat                        | Python / Odoo                      | OWL                        | PostgreSQL               |
+| Fedena                            | Ruby on Rails                      | Web UI                     | Relational DB            |
+| Moodle                            | PHP                                | Themes / JS                | MySQL/MariaDB/PostgreSQL |
+| Chamilo                           | PHP (+ Symfony/Vue in newer lines) | Vue (newer)                | MariaDB                  |
+| Sakai                             | Java / Spring                      | Web Components / Bootstrap | MySQL/Oracle/SQL Server  |
+| openSIS Classic                   | PHP                                | Classic web UI             | MySQL/MariaDB            |
+| Modern indie school SaaS examples | Node/Nest/Express                  | React/Next                 | PostgreSQL + Prisma      |
 
 ## 8.2 Most Common Patterns in 2025–2026 Education SaaS
 
 From modern open education/SaaS repositories and engineering articles:
 
-| Layer | Common Choice | Why |
-|---|---|---|
-| Frontend | React (often Vite or Next.js) | Component reuse, hiring familiarity |
-| Backend | Node.js (Express/Nest) or Python (Django/FastAPI) | Fast API development |
-| Database | **PostgreSQL** | Relational academic data fits SQL well |
-| ORM | Prisma / SQLAlchemy / Eloquent | Safer queries, migrations |
-| Auth | JWT or session + OAuth/OIDC | Stateless APIs or SSO |
-| Cache / queues | Redis | Sessions, rate limits, jobs |
-| Files | S3-compatible object storage | Notes and submissions |
-| Deploy | Docker + cloud PaaS | Repeatable demos |
+| Layer          | Common Choice                                     | Why                                    |
+| -------------- | ------------------------------------------------- | -------------------------------------- |
+| Frontend       | React (often Vite or Next.js)                     | Component reuse, hiring familiarity    |
+| Backend        | Node.js (Express/Nest) or Python (Django/FastAPI) | Fast API development                   |
+| Database       | **PostgreSQL**                                    | Relational academic data fits SQL well |
+| ORM            | Prisma / SQLAlchemy / Eloquent                    | Safer queries, migrations              |
+| Auth           | JWT or session + OAuth/OIDC                       | Stateless APIs or SSO                  |
+| Cache / queues | Redis                                             | Sessions, rate limits, jobs            |
+| Files          | S3-compatible object storage                      | Notes and submissions                  |
+| Deploy         | Docker + cloud PaaS                               | Repeatable demos                       |
 
 ## 8.3 Architecture Style Recommendation Context
 
@@ -1070,12 +1116,12 @@ For CampusOS (already starting as Node.js + Express ESM backend):
 
 ## 8.4 Why Not Copy Enterprise Stacks Blindly
 
-| Enterprise Choice | Why CampusOS Should Avoid Blind Copy |
-|---|---|
-| PeopleSoft / Oracle | Too heavy, proprietary, not student-buildable |
-| Full Odoo/OpenEduCat | Fast to install, hard to own as original project |
-| Moodle-only | Solves LMS, not campus daily ops |
-| Microservices + Kubernetes on day 1 | Over-engineering for a college project |
+| Enterprise Choice                   | Why CampusOS Should Avoid Blind Copy             |
+| ----------------------------------- | ------------------------------------------------ |
+| PeopleSoft / Oracle                 | Too heavy, proprietary, not student-buildable    |
+| Full Odoo/OpenEduCat                | Fast to install, hard to own as original project |
+| Moodle-only                         | Solves LMS, not campus daily ops                 |
+| Microservices + Kubernetes on day 1 | Over-engineering for a college project           |
 
 <div style="page-break-after: always;"></div>
 
@@ -1086,6 +1132,7 @@ Educational platforms handle sensitive personal and academic data. Even a studen
 ## 9.1 Authentication
 
 **Common industry practices:**
+
 - Email/roll-number + password login
 - Password hashing (bcrypt / Argon2)
 - JWT access tokens or secure server sessions
@@ -1112,6 +1159,7 @@ CampusOS roles (from PRD): Student, Faculty, Admin (+ Club Coordinator later).
 ## 9.4 Audit Logs
 
 Needed especially for:
+
 - Grade changes
 - Attendance edits
 - Role changes
@@ -1121,20 +1169,22 @@ Enterprise SIS products treat auditability as compliance-critical (FERPA context
 
 ## 9.5 Encryption
 
-| Layer | Practice |
-|---|---|
-| In transit | HTTPS / TLS |
-| At rest | Disk encryption on hosted DB; hashed passwords |
+| Layer            | Practice                                            |
+| ---------------- | --------------------------------------------------- |
+| In transit       | HTTPS / TLS                                         |
+| At rest          | Disk encryption on hosted DB; hashed passwords      |
 | Sensitive fields | Extra encryption for highly sensitive PII if stored |
 
 ## 9.6 Data Privacy
 
 Depending on country:
+
 - **FERPA** (US education records)
 - **GDPR** (EU personal data)
 - **India DPDP Act** considerations for personal data
 
 CampusOS should:
+
 - Collect only needed fields
 - Restrict profile edits for identity fields
 - Avoid using real student data in public demos
@@ -1142,6 +1192,7 @@ CampusOS should:
 ## 9.7 Backup and Disaster Recovery
 
 Industry baseline:
+
 - Daily database backups
 - File-storage redundancy
 - Tested restore process
@@ -1150,17 +1201,17 @@ Free-tier college deployments should still script backups before demos.
 
 ## 9.8 Security Checklist for CampusOS V1
 
-| Control | V1 Priority |
-|---|---|
-| Password hashing | Must |
-| HTTPS in production | Must |
-| JWT expiry + auth middleware | Must |
-| Server-side RBAC | Must |
-| Input validation | Must |
-| File type/size limits | Must |
-| Audit log for critical writes | Should |
-| MFA | Later |
-| Field-level PII encryption | Later |
+| Control                       | V1 Priority |
+| ----------------------------- | ----------- |
+| Password hashing              | Must        |
+| HTTPS in production           | Must        |
+| JWT expiry + auth middleware  | Must        |
+| Server-side RBAC              | Must        |
+| Input validation              | Must        |
+| File type/size limits         | Must        |
+| Audit log for critical writes | Should      |
+| MFA                           | Later       |
+| Field-level PII encryption    | Later       |
 
 <div style="page-break-after: always;"></div>
 
@@ -1172,29 +1223,29 @@ These recommendations combine the research above with CampusOS project constrain
 
 Build these first. They map to real gaps and are demonstrable.
 
-| Priority | Feature | Why |
-|---|---|---|
-| P0 | Auth + RBAC (Student/Faculty/Admin) | Foundation for everything |
-| P0 | Student / Faculty / Admin dashboards | Main differentiation vs cluttered ERPs |
-| P0 | Digital notice board | Replaces unreliable physical boards |
-| P0 | Notes repository (Semester → Subject → Unit) | Solves WhatsApp notes loss |
-| P0 | Assignment create / submit / track | Solves missed deadlines |
-| P0 | Timetable view | Daily “where do I go?” question |
-| P0 | Attendance mark + student visibility | Solves late shortage discovery |
-| P0 | In-app notifications (+ email for urgent) | Makes information actually arrive |
-| P1 | Academic calendar | Context for deadlines and holidays |
-| P1 | Global search | Fixes weak findability in legacy systems |
-| P1 | User profiles | Basic identity and preferences |
+| Priority | Feature                                      | Why                                      |
+| -------- | -------------------------------------------- | ---------------------------------------- |
+| P0       | Auth + RBAC (Student/Faculty/Admin)          | Foundation for everything                |
+| P0       | Student / Faculty / Admin dashboards         | Main differentiation vs cluttered ERPs   |
+| P0       | Digital notice board                         | Replaces unreliable physical boards      |
+| P0       | Notes repository (Semester → Subject → Unit) | Solves WhatsApp notes loss               |
+| P0       | Assignment create / submit / track           | Solves missed deadlines                  |
+| P0       | Timetable view                               | Daily “where do I go?” question          |
+| P0       | Attendance mark + student visibility         | Solves late shortage discovery           |
+| P0       | In-app notifications (+ email for urgent)    | Makes information actually arrive        |
+| P1       | Academic calendar                            | Context for deadlines and holidays       |
+| P1       | Global search                                | Fixes weak findability in legacy systems |
+| P1       | User profiles                                | Basic identity and preferences           |
 
 ## 10.2 Nice-to-Have Features (if time remains)
 
-| Feature | Why Useful | Risk if Forced Early |
-|---|---|---|
-| Events + registration | Campus life value | Extra CRUD surface |
-| Clubs | Differentiation | Moderation overhead |
-| Semester resource library | Long-term archive value | Needs multi-year data |
-| Attendance CSV export | Faculty convenience | Low complexity, good if spare time |
-| Notice read receipts | Admin confidence | Extra writes/reads |
+| Feature                   | Why Useful              | Risk if Forced Early               |
+| ------------------------- | ----------------------- | ---------------------------------- |
+| Events + registration     | Campus life value       | Extra CRUD surface                 |
+| Clubs                     | Differentiation         | Moderation overhead                |
+| Semester resource library | Long-term archive value | Needs multi-year data              |
+| Attendance CSV export     | Faculty convenience     | Low complexity, good if spare time |
+| Notice read receipts      | Admin confidence        | Extra writes/reads                 |
 
 ## 10.3 Future AI Features
 
@@ -1212,18 +1263,18 @@ Avoid face recognition and autonomous grading in early versions.
 
 Aligned with current CampusOS repo direction and industry SaaS patterns:
 
-| Layer | Recommendation | Why suitable for a college project |
-|---|---|---|
-| Runtime | Node.js (ES Modules) | Already chosen; fast to build APIs |
-| Framework | Express | Simple, widely taught, enough for V1 |
-| Database | PostgreSQL | Relational fit for academic data |
-| ORM | Prisma | Clear schema, migrations, TypeScript-friendly later |
-| Auth | JWT + bcrypt | Stateless, easy to reason about |
-| Frontend (next) | React + Vite + Tailwind | Modern UI speed; matches hiring/skills |
-| Validation | Zod or Joi | Prevent bad input early |
-| Files | Local now → Cloudinary/S3 later | Keeps V1 simple |
-| Email | Free SMTP / SendGrid tier | Deadline reminders |
-| Deploy | Render/Railway + Vercel (or similar) | Free/cheap demo hosting |
+| Layer           | Recommendation                       | Why suitable for a college project                  |
+| --------------- | ------------------------------------ | --------------------------------------------------- |
+| Runtime         | Node.js (ES Modules)                 | Already chosen; fast to build APIs                  |
+| Framework       | Express                              | Simple, widely taught, enough for V1                |
+| Database        | PostgreSQL                           | Relational fit for academic data                    |
+| ORM             | Prisma                               | Clear schema, migrations, TypeScript-friendly later |
+| Auth            | JWT + bcrypt                         | Stateless, easy to reason about                     |
+| Frontend (next) | React + Vite + Tailwind              | Modern UI speed; matches hiring/skills              |
+| Validation      | Zod or Joi                           | Prevent bad input early                             |
+| Files           | Local now → Cloudinary/S3 later      | Keeps V1 simple                                     |
+| Email           | Free SMTP / SendGrid tier            | Deadline reminders                                  |
+| Deploy          | Render/Railway + Vercel (or similar) | Free/cheap demo hosting                             |
 
 ## 10.5 Suggested Architecture
 
@@ -1248,12 +1299,12 @@ Do **not** split into microservices for V1.
 
 ## 10.7 Deployment Approach
 
-| Stage | Approach |
-|---|---|
-| Local development | Docker Postgres + Node API |
-| Team integration | GitHub + branch PRs |
-| Demo / evaluation | Cloud deploy with seed data |
-| Data policy | Synthetic students only in public demos |
+| Stage             | Approach                                |
+| ----------------- | --------------------------------------- |
+| Local development | Docker Postgres + Node API              |
+| Team integration  | GitHub + branch PRs                     |
+| Demo / evaluation | Cloud deploy with seed data             |
+| Data policy       | Synthetic students only in public demos |
 
 ## 10.8 Positioning Statement (for the team)
 
@@ -1269,41 +1320,41 @@ That positioning is supported by the gaps found in this research.
 
 ## 11.1 Definitions and Buyer Guides
 
-1. VigiLearn — *LMS vs SIS vs ERP: University System Guide*  
+1. VigiLearn — _LMS vs SIS vs ERP: University System Guide_  
    https://vigilearn.com/lms-vs-sis-vs-erp/
-2. UniCloud360 — *University ERP Systems: 2026 Buyer Guide*  
+2. UniCloud360 — _University ERP Systems: 2026 Buyer Guide_  
    https://unicloud360.com/blog/university-erp-systems-guide/
-3. openSIS Blog — *SIS vs LMS*  
+3. openSIS Blog — _SIS vs LMS_  
    https://opensis.com/blog/sis-vs-lms-understanding-the-difference-between-student-data-and-learning-platforms
-4. Classter — *SIS vs LMS vs SMS in 2026*  
+4. Classter — _SIS vs LMS vs SMS in 2026_  
    https://www.classter.com/blog/edtech/sis-vs-lms-vs-sms-in-2026-what-schools-actually-need-today/
-5. Clast — *SIS vs ERP*  
+5. Clast — _SIS vs ERP_  
    https://clast.io/blog/sis-vs-erp-school-management-software
 
 ## 11.2 Commercial Product Sites
 
-6. ERPNext / Frappe Education — https://frappe.io/erpnext/for-education  
-7. Fedena — https://fedena.com/  
-8. Foradian — https://foradian.com/  
-9. Academia ERP — https://www.academiaerp.com/  
-10. Ellucian — https://www.ellucian.com/  
-11. PowerSchool — https://www.powerschool.com/  
-12. Blackbaud Higher Education — https://www.blackbaud.com/solutions/organizational-and-program-management/education-management/higher-education  
-13. Oracle PeopleSoft Campus Solutions — https://www.oracle.com/  
-14. TCS iON Digital Campus — https://www.tcsion.com/  
-15. Teachmint — https://www.teachmint.com/  
+6. ERPNext / Frappe Education — https://frappe.io/erpnext/for-education
+7. Fedena — https://fedena.com/
+8. Foradian — https://foradian.com/
+9. Academia ERP — https://www.academiaerp.com/
+10. Ellucian — https://www.ellucian.com/
+11. PowerSchool — https://www.powerschool.com/
+12. Blackbaud Higher Education — https://www.blackbaud.com/solutions/organizational-and-program-management/education-management/higher-education
+13. Oracle PeopleSoft Campus Solutions — https://www.oracle.com/
+14. TCS iON Digital Campus — https://www.tcsion.com/
+15. Teachmint — https://www.teachmint.com/
 16. Campus365 — https://www.campus365.io/
 
 ## 11.3 Open Source Repositories and Docs
 
-17. Frappe Education GitHub — https://github.com/frappe/education  
-18. OpenEduCat GitHub — https://github.com/openeducat/openeducat_erp  
-19. OpenEduCat site — https://openeducat.org/  
-20. Moodle GitHub — https://github.com/moodle/moodle  
-21. Moodle.org — https://moodle.org/  
-22. Chamilo GitHub — https://github.com/chamilo/chamilo-lms  
-23. openSIS Classic GitHub — https://github.com/OS4ED/openSIS-Classic  
-24. OS4ED products — https://www.os4ed.com/products-and-services  
+17. Frappe Education GitHub — https://github.com/frappe/education
+18. OpenEduCat GitHub — https://github.com/openeducat/openeducat_erp
+19. OpenEduCat site — https://openeducat.org/
+20. Moodle GitHub — https://github.com/moodle/moodle
+21. Moodle.org — https://moodle.org/
+22. Chamilo GitHub — https://github.com/chamilo/chamilo-lms
+23. openSIS Classic GitHub — https://github.com/OS4ED/openSIS-Classic
+24. OS4ED products — https://www.os4ed.com/products-and-services
 25. Sakai project documentation (Apereo) — search “Sakai CLE documentation”
 
 ## 11.4 Reviews, Surveys, and Trend Sources
@@ -1312,13 +1363,13 @@ That positioning is supported by the gaps found in this research.
     https://www.softwareadvice.com/erp/ellucian-profile/
 27. Ellucian AI in Higher Education Report (PDF)  
     https://lp.ellucian.com/rs/085-MHT-312/images/Ellucian_2026-AI-Report.pdf
-28. USBA Council — *State of AI in Higher Education 2026* summary  
+28. USBA Council — _State of AI in Higher Education 2026_ summary  
     https://www.usbacouncil.org/post/state-of-artificial-intelligence-in-higher-education-2026-executive-readiness-investment-and-stra
-29. Clast — *AI ERP for Education*  
+29. Clast — _AI ERP for Education_  
     https://clast.io/blog/ai-erp-for-education
-30. UnityEdu — *University ERP Guide (2026)*  
+30. UnityEdu — _University ERP Guide (2026)_  
     https://unityedu.ai/university-erp/
-31. Talentus Global — *ERP Strategy 2026*  
+31. Talentus Global — _ERP Strategy 2026_  
     https://talentusglobal.com/blog/erp-strategy-2026-systems-of-intelligence
 32. Instructure Community — Canvas student dashboard co-design discussion  
     https://community.instructure.com/en/discussion/663735/designing-the-canvas-student-experience-with-student
@@ -1327,34 +1378,34 @@ That positioning is supported by the gaps found in this research.
 
 ## 11.5 Technical / Security References
 
-34. DEV Community — *Building Smart Learning Platforms (2025 stack practices)*  
+34. DEV Community — _Building Smart Learning Platforms (2025 stack practices)_  
     https://dev.to/gloobia/building-smart-learning-platforms-modern-tech-stack-best-practices-for-2025-4n6c
 35. Modern education SaaS examples (architecture patterns): Nest/Express + React + PostgreSQL + Prisma repositories on GitHub (pattern reference, not CampusOS dependency)
 
 ## 11.6 Internal CampusOS Documents
 
-36. CampusOS PRD — `docs/01_Product_Requirements_Document.md`  
+36. CampusOS PRD — `docs/01_Product_Requirements_Document.md`
 37. Temporary ER research — `TEMP_ER_Diagram.md`
 
 ---
 
 ## Appendix A — Research Method Notes
 
-| Step | What Was Done |
-|---|---|
-| Product scan | Official websites + docs for each listed product |
-| Open-source check | GitHub READMEs for stack, licence, features |
-| Complaint scan | Aggregated review sites (Software Advice, GetApp, etc.) |
-| Trend scan | 2025–2026 higher-ed AI / ERP guides and vendor surveys |
-| UX scan | Canvas co-design notes + LMS UX articles |
-| Limitation | Some pricing is quote-only; some stacks are not fully public |
+| Step              | What Was Done                                                |
+| ----------------- | ------------------------------------------------------------ |
+| Product scan      | Official websites + docs for each listed product             |
+| Open-source check | GitHub READMEs for stack, licence, features                  |
+| Complaint scan    | Aggregated review sites (Software Advice, GetApp, etc.)      |
+| Trend scan        | 2025–2026 higher-ed AI / ERP guides and vendor surveys       |
+| UX scan           | Canvas co-design notes + LMS UX articles                     |
+| Limitation        | Some pricing is quote-only; some stacks are not fully public |
 
 ## Appendix B — What CampusOS Should Not Try to Beat in V1
 
-1. Ellucian/PeopleSoft-level financial aid compliance  
-2. Full finance + payroll ERP  
-3. Moodle-level plugin LMS ecosystem  
-4. Biometric multi-campus enterprise attendance  
+1. Ellucian/PeopleSoft-level financial aid compliance
+2. Full finance + payroll ERP
+3. Moodle-level plugin LMS ecosystem
+4. Biometric multi-campus enterprise attendance
 5. National reporting suites (NIRF/NAAC automation as a product promise)
 
 ---
@@ -1365,8 +1416,8 @@ That positioning is supported by the gaps found in this research.
 
 **CampusOS — Market and Technical Research Report · Version 1.0**
 
-*Prepared for the CampusOS engineering team · 3 August 2026*
+_Prepared for the CampusOS engineering team · 3 August 2026_
 
-*Use this document together with the PRD before writing more code.*
+_Use this document together with the PRD before writing more code._
 
 </div>
