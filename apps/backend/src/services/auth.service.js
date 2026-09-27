@@ -1,6 +1,7 @@
 import prisma from "../config/db.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateToken } from "../utils/jwt.js";
+import { sendMail } from "./sendMail.service.js";
 import crypto from "crypto";
 
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -178,7 +179,7 @@ export async function forgotPassword(email) {
   const token = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-  await prisma.passwordResetToken.create({
+  const resetToken = await prisma.passwordResetToken.create({
     data: {
       tokenHash: tokenHash,
       userId: user.user_id,
@@ -186,9 +187,77 @@ export async function forgotPassword(email) {
     },
   });
 
-  return {
-    token: token,
-  };
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  try {
+    await sendMail({
+      to: user.email,
+      subject: "Reset your CampusOS password",
+      html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h2 style="color: #222;">Reset your CampusOS password</h2>
+
+                    <p>Hello ${user.name},</p>
+
+                    <p>
+                        We received a request to reset the password for your CampusOS account.
+                    </p>
+
+                    <p>
+                        Click the button below to create a new password:
+                    </p>
+
+                    <div style="margin: 32px 0;">
+                        <a
+                            href="${resetLink}"
+                            style="
+                                display: inline-block;
+                                padding: 12px 24px;
+                                background-color: #2563eb;
+                                color: #ffffff;
+                                text-decoration: none;
+                                border-radius: 6px;
+                                font-weight: 600;
+                            "
+                        >
+                            Reset Password
+                        </a>
+                    </div>
+
+                    <p>
+                        This link will expire in <strong>1 hour</strong>.
+                    </p>
+
+                    <p>
+                        If you did not request a password reset, you can safely ignore
+                        this email. Your password will remain unchanged.
+                    </p>
+
+                    <p style="color: #666; font-size: 13px;">
+                        For security reasons, please do not share this link with anyone.
+                    </p>
+
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+
+                    <p style="color: #888; font-size: 12px;">
+                        This is an automated email from CampusOS. Please do not reply to this email.
+                    </p>
+                </div>
+            `,
+    });
+
+    return {
+      message: "If the email exists, a password reset link has been sent.",
+    };
+  } catch (error) {
+    await prisma.passwordResetToken.delete({
+      where: {
+        id: resetToken.id,
+      },
+    });
+
+    throw error;
+  }
 }
 
 export async function resetPassword(token, newPassword) {
