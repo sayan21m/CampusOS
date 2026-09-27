@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { requestPasswordReset } from "../services/auth";
 import "./Login.css"; // Reusing clean login & auth styles
 
 export default function ForgotPassword(): React.JSX.Element {
@@ -14,6 +15,33 @@ export default function ForgotPassword(): React.JSX.Element {
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  function getErrorMessage(error: unknown): string {
+    const err = error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: Array<{ message: string }>;
+        };
+      };
+    };
+
+    if (!err.response) {
+      return "CampusOS is unavailable right now. Check your connection and try again.";
+    }
+
+    const data = err.response.data;
+
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      return data.errors.map((issue) => issue.message).join(" ");
+    }
+
+    if (typeof data?.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+
+    return "Failed to send reset link. Please try again.";
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -31,14 +59,13 @@ export default function ForgotPassword(): React.JSX.Element {
     setIsSubmitting(true);
 
     try {
-      // Placeholder simulation for sending password reset instructions
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      
+      const data = await requestPasswordReset({ email: trimmedEmail });
+
       setSuccessMessage(
-        "If an account exists with this email, password reset instructions have been sent."
+        data?.message || "If the email exists, a password reset link has been sent.",
       );
     } catch (requestError) {
-      setError("Failed to send reset link. Please try again.");
+      setError(getErrorMessage(requestError));
     } finally {
       setIsSubmitting(false);
     }

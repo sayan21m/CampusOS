@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { registerUser } from "../services/auth";
 import "./Login.css"; 
 
 export default function Register(): React.JSX.Element {
@@ -20,6 +21,33 @@ export default function Register(): React.JSX.Element {
     return <Navigate to="/dashboard" replace />;
   }
 
+  function getErrorMessage(error: unknown): string {
+    const err = error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: Array<{ message: string }>;
+        };
+      };
+    };
+
+    if (!err.response) {
+      return "CampusOS is unavailable right now. Check your connection and try again.";
+    }
+
+    const data = err.response.data;
+
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      return data.errors.map((issue) => issue.message).join(" ");
+    }
+
+    if (typeof data?.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+
+    return "Registration failed. Please try again later.";
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -37,15 +65,23 @@ export default function Register(): React.JSX.Element {
       return;
     }
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      // Redirect user back to login after successful mock registration
+      await registerUser({
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
+      });
+
       navigate("/login", { replace: true });
     } catch (requestError) {
-      setError("Registration failed. Please try again later.");
+      setError(getErrorMessage(requestError));
     } finally {
       setIsSubmitting(false);
     }
