@@ -1,5 +1,5 @@
 import express from "express";
-import { createStudentController } from "../controllers/student.controller.js";
+import { createStudentController, getStudentByIdController } from "../controllers/student.controller.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { createStudentSchema } from "../validators/student.validator.js";
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -14,5 +14,7 @@ router.post(
   validate(createStudentSchema),
   createStudentController
 );
+
+router.get("/:id", authenticate, getStudentByIdController);
 
 export default router;

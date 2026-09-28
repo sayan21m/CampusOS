@@ -90,3 +90,49 @@ export async function createStudent(studentData) {
     photo_url: student.photo_url,
   };
 }
+
+export async function getStudentById(studentId) {
+  if (!Number.isInteger(studentId) || studentId < 1) {
+    throw createError("Invalid student id", 400);
+  }
+
+  const student = await prisma.student.findUnique({
+    where: {
+      student_id: studentId,
+    },
+    include: {
+      user: {
+        select: {
+          user_id: true,
+          email: true,
+          role: true,
+        },
+      },
+      department: {
+        select: {
+          dept_id: true,
+          dept_name: true,
+          dept_code: true,
+        },
+      },
+    },
+  });
+
+  if (!student) {
+    throw createError("Student not found", 404);
+  }
+
+  return {
+    studentId: student.student_id,
+    userId: student.user_id,
+    roll_number: student.roll_number,
+    full_name: student.full_name,
+    semester: student.semester,
+    section: student.section,
+    admission_year: student.admission_year,
+    phone: student.phone,
+    photo_url: student.photo_url,
+    user: student.user,
+    department: student.department,
+  };
+}
