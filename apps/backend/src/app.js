@@ -2,6 +2,7 @@ import express from "express";
 import "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import deptRoutes from "./routes/department.routes.js";
+import studentRoutes from "./routes/student.routes.js";
 import cors from "cors";
 
 const app = express();
@@ -18,5 +19,6 @@ app.use(
 );
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/departments", deptRoutes);
+app.use("/api/v1/students", studentRoutes);
 
 export default app;
