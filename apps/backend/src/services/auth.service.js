@@ -160,7 +160,7 @@ export async function forgotPassword(email) {
 
   if (!user) {
     return {
-        message: "If the email exists, a password reset link has been sent.",
+      message: "If the email exists, a password reset link has been sent.",
     };
   }
 

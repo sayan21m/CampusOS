@@ -40,7 +40,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function Login(): React.JSX.Element {
-  const auth = useAuth() as { isAuthenticated: boolean; login: (data: { token: string; user: any }) => void };
+  const auth = useAuth() as {
+    isAuthenticated: boolean;
+    login: (data: { token: string; user: any }) => void;
+  };
   const { isAuthenticated, login } = auth;
   const navigate = useNavigate();
 
@@ -131,9 +134,7 @@ export default function Login(): React.JSX.Element {
         <div className="login-card">
           <div className="login-header">
             <h2 id="login-title">Sign in to portal</h2>
-            <p className="login-subtitle">
-              Enter your official college credentials to continue.
-            </p>
+            <p className="login-subtitle">Enter your official college credentials to continue.</p>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>
