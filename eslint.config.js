@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import globals from "globals";
 
 export default [
   js.configs.recommended,
@@ -23,6 +24,8 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
+        ...globals.node,
+        fetch: "readonly",
         console: "readonly",
         process: "readonly",
         Buffer: "readonly",

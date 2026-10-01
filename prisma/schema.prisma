@@ -7,28 +7,78 @@ datasource db {
 }
 
 model User {
-    user_id            Int      @id @default(autoincrement())
-    name               String
-    email              String   @unique
-    passwordHash       String
-    role               String
-    isActive            Boolean  @default(true)
-    failedLoginAttempts Int      @default(0)
-    lockedUntil         DateTime?
-    lastLogin           DateTime?
-    createdAt           DateTime @default(now())
+  user_id             Int       @id @default(autoincrement())
+  name                String
+  email               String    @unique
+  passwordHash        String
+  role                String
+  isActive            Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLogin           DateTime?
+  createdAt           DateTime  @default(now())
 
-    passwordResetTokens passwordResetToken[]
+  passwordResetTokens passwordResetToken[]
+
+  student Student?
+  faculty Faculty?
 }
 
 model passwordResetToken {
-  id Int @id @default(autoincrement())
-  tokenHash String @unique
-  userId Int
-  usedAt DateTime?
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  userId    Int
+  usedAt    DateTime?
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [user_id], onDelete: Cascade)
+
   @@index([userId])
+}
+
+model Department {
+  dept_id        Int    @id @default(autoincrement())
+  dept_name      String @unique
+  dept_code      String @unique
+  hod_faculty_id Int?   @unique
+
+  hod      Faculty?  @relation("DepartmentHOD", fields: [hod_faculty_id], references: [faculty_id])
+  students Student[]
+  faculty  Faculty[] @relation("DepartmentFaculty")
+}
+
+model Student {
+  student_id     Int     @id @default(autoincrement())
+  user_id        Int     @unique
+  roll_number    String  @unique
+  full_name      String
+  dept_id        Int
+  semester       Int
+  section        String
+  admission_year Int
+  phone          String?
+  photo_url      String?
+
+  user       User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department Department @relation(fields: [dept_id], references: [dept_id])
+
+  @@index([dept_id])
+}
+
+model Faculty {
+  faculty_id  Int     @id @default(autoincrement())
+  user_id     Int     @unique
+  employee_id String  @unique
+  full_name   String
+  dept_id     Int
+  designation String
+  phone       String?
+  photo_url   String?
+
+  user            User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department      Department  @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
+  hodOfDepartment Department? @relation("DepartmentHOD")
+
+  @@index([dept_id])
 }
