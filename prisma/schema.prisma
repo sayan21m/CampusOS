@@ -46,6 +46,7 @@ model Department {
   hod      Faculty?  @relation("DepartmentHOD", fields: [hod_faculty_id], references: [faculty_id])
   students Student[]
   faculty  Faculty[] @relation("DepartmentFaculty")
+  subjects Subject[]
 }
 
 model Student {
@@ -79,6 +80,20 @@ model Faculty {
   user            User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   department      Department  @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
   hodOfDepartment Department? @relation("DepartmentHOD")
+
+  @@index([dept_id])
+}
+
+model Subject {
+  subject_id   Int     @id @default(autoincrement())
+  subject_code String  @unique
+  subject_name String
+  dept_id      Int
+  semester     Int
+  credits      Int
+  is_active    Boolean @default(true)
+
+  department Department @relation(fields: [dept_id], references: [dept_id])
 
   @@index([dept_id])
 }

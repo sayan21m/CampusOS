@@ -5,6 +5,7 @@ import deptRoutes from "./routes/department.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import facultyRoutes from "./routes/faculty.routes.js";
+import subjectRoutes from "./routes/subject.routes.js";
 import cors from "cors";
 
 const app = express();
@@ -24,5 +25,6 @@ app.use("/api/v1/departments", deptRoutes);
 app.use("/api/v1/students", studentRoutes);
 app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/faculty", facultyRoutes);
+app.use("/api/v1/subjects", subjectRoutes);
 
 export default app;
