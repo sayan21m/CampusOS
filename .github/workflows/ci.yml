@@ -1,0 +1,128 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main, "feature/**", "fix/**", "chore/**", "hotfix/**"]
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  branch-style:
+    name: Branch naming
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR source branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          echo "Checking branch: $BRANCH"
+          if [[ "$BRANCH" =~ ^(feature|fix|chore|hotfix)/[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "Branch name follows CampusOS style."
+            exit 0
+          fi
+          echo "::error::Branch '$BRANCH' must match: feature|fix|chore|hotfix/<kebab-or-snake-name>"
+          echo "Examples: feature/assignment-management, fix/backend-cors"
+          exit 1
+
+  quality:
+    name: Lint, format, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier
+        run: npm run format:check
+
+      - name: Prisma validate
+        env:
+          DATABASE_URL: postgresql://campusos:campusos_dev@localhost:5432/campus_os
+        run: npx prisma validate
+
+      - name: Unit tests
+        run: npm test
+
+  backend-e2e:
+    name: Backend E2E
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: campusos
+          POSTGRES_PASSWORD: campusos_dev
+          POSTGRES_DB: campus_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U campusos -d campus_os"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://campusos:campusos_dev@localhost:5432/campus_os
+      JWT_SECRET: campusos_ci_jwt_secret_do_not_use_in_prod
+      PORT: "3000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
+
+      - name: Start backend server
+        run: |
+          npm start > /tmp/campusos-backend.log 2>&1 &
+          echo $! > /tmp/campusos-backend.pid
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:3000/" >/dev/null 2>&1; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend failed to start"
+          cat /tmp/campusos-backend.log
+          exit 1
+
+      - name: Run backend E2E suite
+        run: npm run test:e2e
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f /tmp/campusos-backend.pid ]; then
+            kill "$(cat /tmp/campusos-backend.pid)" || true
+          fi
+          if [ -f /tmp/campusos-backend.log ]; then
+            echo "----- backend log (tail) -----"
+            tail -n 100 /tmp/campusos-backend.log || true
+          fi

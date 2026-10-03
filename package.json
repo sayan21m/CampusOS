@@ -31,6 +31,7 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --passWithNoTests",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --passWithNoTests",
     "test:watch:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --passWithNoTests",
+    "test:e2e": "node apps/backend/tests/faculty.e2e.js && node apps/backend/tests/profile.e2e.js && node apps/backend/tests/subject.e2e.js && node apps/backend/tests/assignment.e2e.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate || exit 0"
   },
