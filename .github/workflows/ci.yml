@@ -24,14 +24,21 @@ jobs:
           set -euo pipefail
           echo "Checking branch from @$AUTHOR: $BRANCH"
 
-          # CampusOS style: feature/SCRUM-33-assignment-management
-          if [[ "$BRANCH" =~ ^(feature|fix|chore|hotfix)/SCRUM-[0-9]+-[a-z0-9][a-z0-9._-]*$ ]]; then
-            echo "Branch name follows CampusOS style."
+          # Frontend: feature/frontend-<topic>
+          if [[ "$BRANCH" =~ ^feature/frontend-[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "Frontend branch name follows CampusOS style."
             exit 0
           fi
 
-          echo "::error::Branch '$BRANCH' must match: feature|fix|chore|hotfix/SCRUM-<id>-<short-description>"
-          echo "Examples: feature/SCRUM-33-assignment-management, fix/SCRUM-12-backend-cors"
+          # Backend: feature/<topic> (must not use the frontend/ prefix)
+          if [[ "$BRANCH" =~ ^feature/[a-z0-9][a-z0-9._-]*$ && "$BRANCH" != feature/frontend-* ]]; then
+            echo "Backend branch name follows CampusOS style."
+            exit 0
+          fi
+
+          echo "::error::Branch '$BRANCH' must match frontend or backend style:"
+          echo "  Frontend: feature/frontend-<topic>   (e.g. feature/frontend-login)"
+          echo "  Backend:  feature/<topic>            (e.g. feature/assignment-management)"
           exit 1
 
   quality:
