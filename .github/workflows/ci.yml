@@ -24,13 +24,14 @@ jobs:
           set -euo pipefail
           echo "Checking branch from @$AUTHOR: $BRANCH"
 
-          if [[ "$BRANCH" =~ ^(feature|fix|chore|hotfix)/[a-z0-9][a-z0-9._-]*$ ]]; then
+          # CampusOS style: feature/SCRUM-33-assignment-management
+          if [[ "$BRANCH" =~ ^(feature|fix|chore|hotfix)/SCRUM-[0-9]+-[a-z0-9][a-z0-9._-]*$ ]]; then
             echo "Branch name follows CampusOS style."
             exit 0
           fi
 
-          echo "::error::Branch '$BRANCH' must match: feature|fix|chore|hotfix/<kebab-or-snake-name>"
-          echo "Examples: feature/assignment-management, fix/backend-cors"
+          echo "::error::Branch '$BRANCH' must match: feature|fix|chore|hotfix/SCRUM-<id>-<short-description>"
+          echo "Examples: feature/SCRUM-33-assignment-management, fix/SCRUM-12-backend-cors"
           exit 1
 
   quality:
