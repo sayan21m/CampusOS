@@ -226,3 +226,72 @@ export async function gradeSubmission(submission_id, faculty_id, marks, feedback
 
   return updatedSubmission;
 }
+
+export async function getMyAssignments(student_id) {
+  const student = await prisma.student.findUnique({
+    where: {
+      student_id,
+    },
+  });
+
+  if (!student) {
+    throw createError("Student profile not found", 404);
+  }
+
+  const assignments = await prisma.assignment.findMany({
+    where: {
+      section: student.section,
+      subject: {
+        dept_id: student.dept_id,
+        semester: student.semester,
+      },
+    },
+  });
+
+  const submissions = await prisma.submission.findMany({
+    where: {
+      student_id,
+    },
+    select: {
+      submission_id: true,
+      assignment_id: true,
+      submitted_at: true,
+      is_late: true,
+      marks: true,
+      feedback: true,
+    },
+  });
+
+  const result = assignments.map((assignment) => {
+    const submission = submissions.find(
+      (submission) => submission.assignment_id === assignment.assignment_id
+    );
+
+    let status;
+
+    if (!submission) {
+      status = "Pending";
+    } else if (submission.marks !== null) {
+      status = "Graded";
+    } else if (submission.is_late) {
+      status = "Late";
+    } else {
+      status = "Submitted";
+    }
+
+    return {
+      assignment_id: assignment.assignment_id,
+      title: assignment.title,
+      subject_id: assignment.subject_id,
+      section: assignment.section,
+      deadline: assignment.deadline,
+      max_marks: assignment.max_marks,
+      submission: submission ?? null,
+      status: status,
+    };
+  });
+
+  return {
+    assignments: result,
+  };
+}

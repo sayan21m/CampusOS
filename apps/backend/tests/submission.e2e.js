@@ -259,6 +259,7 @@ async function cleanupTestData({
   studentUserId,
   studentUserIds,
   departmentId,
+  departmentIds,
   userEmails,
 }) {
   const ids = (assignmentIds || []).filter(Boolean);
@@ -307,9 +308,11 @@ async function cleanupTestData({
     });
   }
 
-  if (departmentId) {
+  const allDepartmentIds = [...(departmentIds || []), departmentId].filter(Boolean);
+
+  if (allDepartmentIds.length > 0) {
     await prisma.department.deleteMany({
-      where: { dept_id: departmentId },
+      where: { dept_id: { in: allDepartmentIds } },
     });
   }
 
@@ -324,6 +327,37 @@ async function cleanupTestData({
   }
 
   await fs.rm(TEMP_DIR, { recursive: true, force: true });
+}
+
+function findMyAssignment(assignments, assignmentId) {
+  return (assignments || []).find((assignment) => assignment.assignment_id === assignmentId);
+}
+
+function assertMySubmissionShape(submission, label) {
+  if (!submission) {
+    return;
+  }
+
+  const allowedKeys = [
+    "submission_id",
+    "assignment_id",
+    "submitted_at",
+    "is_late",
+    "marks",
+    "feedback",
+  ];
+
+  for (const key of Object.keys(submission)) {
+    assert(
+      allowedKeys.includes(key),
+      `${label} submission should not expose unexpected field "${key}"`
+    );
+  }
+
+  assert(
+    Object.prototype.hasOwnProperty.call(submission, "file_url") === false,
+    `${label} submission must not expose file_url`
+  );
 }
 
 async function createAssignmentViaApi({
@@ -367,20 +401,26 @@ async function runTests() {
   const reviewSubmittedEmail = `e2e.submission.review.submitted.${testId}@campusos.test`;
   const reviewLateEmail = `e2e.submission.review.late.${testId}@campusos.test`;
   const reviewGradedEmail = `e2e.submission.review.graded.${testId}@campusos.test`;
+  const emptyStudentEmail = `e2e.submission.empty.${testId}@campusos.test`;
   const departmentName = `E2E Submission Department ${testId}`;
   const departmentCode = deptCodeFor(testId);
+  const otherDepartmentCode = `OD${String(testId).slice(-8)}`.slice(0, 10);
   const subjectCode = subjectCodeFor(testId);
+  const otherSemesterSubjectCode = subjectCodeFor(testId, "S6");
+  const otherDepartmentSubjectCode = subjectCodeFor(testId, "OD");
   const employeeId = employeeIdFor(testId);
   const employeeIdB = employeeIdFor(testId, "B");
   const facultyPassword = "Faculty@123456";
   const studentPassword = "Student@123";
 
   let departmentId;
+  let otherDepartmentId;
   let subjectId;
   let facultyUserId;
   let facultyBUserId;
   let studentUserId;
   let studentId;
+  let emptyStudentUserId;
   let ephemeralAdminEmail;
   const createdAssignmentIds = [];
   const reviewStudentUserIds = [];
@@ -390,6 +430,7 @@ async function runTests() {
     reviewSubmittedEmail,
     reviewLateEmail,
     reviewGradedEmail,
+    emptyStudentEmail,
   ];
 
   const pdfPath = await writeTempFile(
@@ -1351,7 +1392,7 @@ async function runTests() {
     );
     assert(zeroSubmissionReview.status !== 201, "Review endpoint must return 200, not 201");
 
-    const zeroPayload = zeroSubmissionReview.data?.result;
+    const zeroPayload = zeroSubmissionReview.data;
     assert(zeroPayload?.assignment, "Zero-submission review should include assignment");
     assert(Array.isArray(zeroPayload?.students), "Zero-submission review should include students");
     assert(
@@ -1402,7 +1443,7 @@ async function runTests() {
     console.log("Review Unrelated Faculty:", reviewFacultyB.status);
     assert(reviewFacultyB.status === 404, "Non-owner FACULTY review access should return 404");
     assert(
-      reviewFacultyB.data?.result == null && reviewFacultyB.data?.assignment == null,
+      reviewFacultyB.data?.assignment == null && reviewFacultyB.data?.students == null,
       "Non-owner FACULTY response must not leak assignment data"
     );
     assert(
@@ -1500,7 +1541,7 @@ async function runTests() {
     assert(reviewSuccess.status === 200, "Faculty review success should return 200");
     assert(reviewSuccess.status !== 201, "Faculty review success must not return 201");
 
-    const reviewPayload = reviewSuccess.data?.result;
+    const reviewPayload = reviewSuccess.data;
     assert(reviewPayload?.assignment, "Successful review response should include assignment");
     assert(
       Array.isArray(reviewPayload?.students),
@@ -1796,7 +1837,7 @@ async function runTests() {
       `Review after grading should return 200 (got ${reviewAfterGrade.status})`
     );
     const reviewAfterGradeStudent = findStudentResult(
-      reviewAfterGrade.data?.result?.students,
+      reviewAfterGrade.data?.students,
       submittedStudent.studentId
     );
     assert(reviewAfterGradeStudent, "Review after grading should still include the graded student");
@@ -2000,6 +2041,387 @@ async function runTests() {
     console.log("Verify Re-grade Persistence: passed");
 
     // --------------------------------------------------
+    // Student My Assignments: GET /submissions/my
+    // --------------------------------------------------
+
+    const myRoutesPath = path.resolve("apps/backend/src/routes/submission.routes.js");
+    const myRoutesSrc = await fs.readFile(myRoutesPath, "utf8");
+    assert(
+      /authenticate/.test(myRoutesSrc) &&
+        /authorize\("STUDENT"\)/.test(myRoutesSrc) &&
+        /getMyAssignmentsController/.test(myRoutesSrc) &&
+        /["'`]\/my["'`]/.test(myRoutesSrc),
+      'GET /my must use authenticate, authorize("STUDENT"), and getMyAssignmentsController'
+    );
+
+    const myNoAuth = await request("GET", "/submissions/my");
+    console.log("My Assignments No Authorization:", myNoAuth.status);
+    assert(myNoAuth.status === 401, "My Assignments without Authorization should return 401");
+
+    const myAdminForbidden = await request("GET", "/submissions/my", null, adminToken);
+    console.log("My Assignments Admin Forbidden:", myAdminForbidden.status);
+    assert(myAdminForbidden.status === 403, "ADMIN My Assignments access should return 403");
+
+    const myFacultyForbidden = await request("GET", "/submissions/my", null, facultyToken);
+    console.log("My Assignments Faculty Forbidden:", myFacultyForbidden.status);
+    assert(myFacultyForbidden.status === 403, "FACULTY My Assignments access should return 403");
+
+    const myPendingAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId,
+      title: `E2E My Assignments Pending ${testId}`,
+      allowLate: false,
+      section: "A",
+    });
+    createdAssignmentIds.push(myPendingAssignment.assignment_id);
+
+    const myLateAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId,
+      title: `E2E My Assignments Late ${testId}`,
+      allowLate: true,
+      section: "A",
+    });
+    createdAssignmentIds.push(myLateAssignment.assignment_id);
+    await prisma.assignment.update({
+      where: { assignment_id: myLateAssignment.assignment_id },
+      data: { deadline: new Date(pastDeadline()) },
+    });
+
+    const myLateUpload = await uploadRequest(
+      `/submissions/assignments/${myLateAssignment.assignment_id}`,
+      pdfPath,
+      studentToken,
+      "my-late.pdf"
+    );
+    assert(
+      myLateUpload.status === 201,
+      `My Assignments late upload should return 201 (got ${myLateUpload.status})`
+    );
+    assert(myLateUpload.data?.submission?.is_late === true, "Late fixture submission should be late");
+
+    const otherSemesterSubjectResponse = await request(
+      "POST",
+      "/subjects",
+      {
+        subject_code: otherSemesterSubjectCode,
+        subject_name: "E2E Other Semester Subject",
+        dept_id: departmentId,
+        semester: 6,
+        credits: 3,
+      },
+      adminToken
+    );
+    assert(
+      otherSemesterSubjectResponse.status === 201,
+      `Other-semester subject creation should return 201 (got ${otherSemesterSubjectResponse.status})`
+    );
+    const otherSemesterSubjectId = otherSemesterSubjectResponse.data.subject.subjectId;
+
+    const otherSemesterAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId: otherSemesterSubjectId,
+      title: `E2E My Assignments Other Semester ${testId}`,
+      allowLate: false,
+      section: "A",
+    });
+    createdAssignmentIds.push(otherSemesterAssignment.assignment_id);
+
+    const otherDepartmentResponse = await request(
+      "POST",
+      "/departments",
+      {
+        dept_name: `E2E Other Department ${testId}`,
+        dept_code: otherDepartmentCode,
+      },
+      adminToken
+    );
+    assert(
+      otherDepartmentResponse.status === 201,
+      `Other department creation should return 201 (got ${otherDepartmentResponse.status})`
+    );
+    otherDepartmentId = otherDepartmentResponse.data.department.dept_id;
+
+    const otherDepartmentSubjectResponse = await request(
+      "POST",
+      "/subjects",
+      {
+        subject_code: otherDepartmentSubjectCode,
+        subject_name: "E2E Other Department Subject",
+        dept_id: otherDepartmentId,
+        semester: 5,
+        credits: 3,
+      },
+      adminToken
+    );
+    assert(
+      otherDepartmentSubjectResponse.status === 201,
+      `Other-department subject creation should return 201 (got ${otherDepartmentSubjectResponse.status})`
+    );
+    const otherDepartmentSubjectId = otherDepartmentSubjectResponse.data.subject.subjectId;
+
+    const otherDepartmentAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId: otherDepartmentSubjectId,
+      title: `E2E My Assignments Other Department ${testId}`,
+      allowLate: false,
+      section: "A",
+    });
+    createdAssignmentIds.push(otherDepartmentAssignment.assignment_id);
+
+    const myStudentAllowed = await request("GET", "/submissions/my", null, studentToken);
+    console.log("My Assignments Student Allowed:", myStudentAllowed.status);
+    assert(myStudentAllowed.status === 200, "STUDENT My Assignments access should return 200");
+    assert(
+      Array.isArray(myStudentAllowed.data?.assignments),
+      "My Assignments response should contain assignments array"
+    );
+
+    const myAssignments = myStudentAllowed.data.assignments;
+    const myOnTime = findMyAssignment(myAssignments, onTimeAssignment.assignment_id);
+    assert(myOnTime, "Relevant on-time assignment should appear in My Assignments");
+    assert(
+      myOnTime.assignment_id === onTimeAssignment.assignment_id,
+      "My Assignments assignment_id should match"
+    );
+    assert(myOnTime.title === onTimeAssignment.title, "My Assignments title should match");
+    assert(
+      myOnTime.subject_id === onTimeAssignment.subject_id,
+      "My Assignments subject_id should match"
+    );
+    assert(myOnTime.section === "A", "My Assignments section should match student section");
+    assert(myOnTime.deadline, "My Assignments deadline should be present");
+    assert(
+      Number(myOnTime.max_marks) === Number(onTimeAssignment.max_marks),
+      "My Assignments max_marks should match"
+    );
+
+    const myPending = findMyAssignment(myAssignments, myPendingAssignment.assignment_id);
+    assert(myPending, "Pending relevant assignment should appear even without a submission");
+    assert(myPending.submission === null, "Pending assignment submission should be null");
+    assert(myPending.status === "Pending", "Pending assignment status should be Pending");
+    console.log("Verify Pending Assignment: passed");
+
+    assert(myOnTime.submission, "Submitted assignment should include submission object");
+    assert(myOnTime.submission.is_late === false, "Submitted assignment is_late should be false");
+    assert(myOnTime.submission.marks == null, "Submitted assignment marks should be null before grading");
+    assert(myOnTime.status === "Submitted", "Submitted assignment status should be Submitted");
+    assert(
+      myOnTime.submission.submission_id === replacedSubmission.submission_id,
+      "My Assignments should return the latest replaced submission_id"
+    );
+    assert(
+      myOnTime.submission.assignment_id === onTimeAssignment.assignment_id,
+      "Submitted assignment submission.assignment_id should match"
+    );
+    console.log("Verify Submitted Assignment: passed");
+
+    const myLate = findMyAssignment(myAssignments, myLateAssignment.assignment_id);
+    assert(myLate, "Late relevant assignment should appear in My Assignments");
+    assert(myLate.submission, "Late assignment should include submission object");
+    assert(myLate.submission.is_late === true, "Late assignment is_late should be true");
+    assert(myLate.submission.marks == null, "Late assignment marks should be null");
+    assert(myLate.status === "Late", "Late assignment status should be Late");
+    console.log("Verify Late Assignment: passed");
+
+    const gradedStudentMy = await request(
+      "GET",
+      "/submissions/my",
+      null,
+      gradedStudent.token
+    );
+    assert(gradedStudentMy.status === 200, "Graded review student My Assignments should return 200");
+    const gradedStudentAssignment = findMyAssignment(
+      gradedStudentMy.data?.assignments,
+      reviewAssignment.assignment_id
+    );
+    assert(gradedStudentAssignment, "Graded student should see the review assignment");
+    assert(
+      Number(gradedStudentAssignment.submission?.marks) === 88,
+      "Graded assignment marks should match seeded grade"
+    );
+    assert(
+      gradedStudentAssignment.submission?.feedback === "Solid work",
+      "Graded assignment feedback should match seeded feedback"
+    );
+    assert(gradedStudentAssignment.status === "Graded", "Graded assignment status should be Graded");
+    console.log("Verify Graded Assignment: passed");
+
+    assert(
+      findMyAssignment(myAssignments, rejectLateAssignment.assignment_id) == null,
+      "Different-section assignment must not appear in My Assignments"
+    );
+    assert(
+      findMyAssignment(myAssignments, reviewAssignment.assignment_id) == null,
+      "Section R review assignment must not appear for section A student"
+    );
+    console.log("Verify Section Filtering: passed");
+
+    assert(
+      findMyAssignment(myAssignments, otherSemesterAssignment.assignment_id) == null,
+      "Different-semester assignment must not appear in My Assignments"
+    );
+    console.log("Verify Semester Filtering: passed");
+
+    assert(
+      findMyAssignment(myAssignments, otherDepartmentAssignment.assignment_id) == null,
+      "Different-department assignment must not appear in My Assignments"
+    );
+    console.log("Verify Department Filtering: passed");
+
+    const pendingStudentMy = await request("GET", "/submissions/my", null, pendingStudent.token);
+    assert(pendingStudentMy.status === 200, "Pending review student My Assignments should return 200");
+    const pendingStudentAssignment = findMyAssignment(
+      pendingStudentMy.data?.assignments,
+      reviewAssignment.assignment_id
+    );
+    assert(pendingStudentAssignment, "Pending student should see the shared review assignment");
+    assert(
+      pendingStudentAssignment.submission === null,
+      "Pending student must not receive another student's submission object"
+    );
+    assert(pendingStudentAssignment.status === "Pending", "Pending student status should remain Pending");
+
+    const submittedStudentMy = await request(
+      "GET",
+      "/submissions/my",
+      null,
+      submittedStudent.token
+    );
+    assert(
+      submittedStudentMy.status === 200,
+      "Submitted/graded review student My Assignments should return 200"
+    );
+    const submittedStudentAssignment = findMyAssignment(
+      submittedStudentMy.data?.assignments,
+      reviewAssignment.assignment_id
+    );
+    assert(submittedStudentAssignment?.submission, "Submitted student should see their own submission");
+    assert(
+      submittedStudentAssignment.submission.submission_id === gradeTargetSubmissionId,
+      "My Assignments must return only the logged-in student's submission_id"
+    );
+    assert(
+      Number(submittedStudentAssignment.submission.marks) === 92,
+      "My Assignments must expose the logged-in student's marks, not another student's"
+    );
+    assert(
+      submittedStudentAssignment.submission.feedback === "Improved after revision.",
+      "My Assignments must expose the logged-in student's feedback, not another student's"
+    );
+    console.log("Verify Student Isolation: passed");
+
+    assertNoFileUrlLeak(myStudentAllowed.data, "My Assignments student response");
+    assertNoFileUrlLeak(gradedStudentMy.data, "My Assignments graded-student response");
+    assertNoFileUrlLeak(submittedStudentMy.data, "My Assignments submitted-student response");
+    for (const assignment of [
+      ...myAssignments,
+      ...(gradedStudentMy.data.assignments || []),
+      ...(submittedStudentMy.data.assignments || []),
+    ]) {
+      assertMySubmissionShape(assignment.submission, `assignment ${assignment.assignment_id}`);
+      if (assignment.submission) {
+        const serialized = JSON.stringify(assignment.submission);
+        assert(
+          serialized.includes("apps/backend/storage") === false,
+          "My Assignments submission must not expose internal filesystem paths"
+        );
+        assert(
+          serialized.includes("file_url") === false,
+          "My Assignments submission must not expose file_url"
+        );
+      }
+    }
+    console.log("Verify File URL Protection: passed");
+
+    const gradeIntegration = await request(
+      "PATCH",
+      `/submissions/${myLateUpload.data.submission.submission_id}/grade`,
+      {
+        marks: 81,
+        feedback: "Graded via My Assignments integration.",
+      },
+      facultyToken
+    );
+    assert(
+      gradeIntegration.status === 200,
+      `Grading for My Assignments integration should return 200 (got ${gradeIntegration.status})`
+    );
+
+    const myAfterGrade = await request("GET", "/submissions/my", null, studentToken);
+    assert(myAfterGrade.status === 200, "My Assignments after grading should return 200");
+    const gradedLateAssignment = findMyAssignment(
+      myAfterGrade.data?.assignments,
+      myLateAssignment.assignment_id
+    );
+    assert(gradedLateAssignment, "Graded late assignment should remain in My Assignments");
+    assert(gradedLateAssignment.status === "Graded", "My Assignments status should become Graded");
+    assert(
+      Number(gradedLateAssignment.submission?.marks) === 81,
+      "My Assignments marks should match the grade integration value"
+    );
+    assert(
+      gradedLateAssignment.submission?.feedback === "Graded via My Assignments integration.",
+      "My Assignments feedback should match the grade integration value"
+    );
+    console.log("Verify Graded Assignment Integration: passed");
+
+    const myAfterReplace = findMyAssignment(
+      myAfterGrade.data?.assignments,
+      onTimeAssignment.assignment_id
+    );
+    assert(myAfterReplace, "Replaced assignment should still appear after later My Assignments calls");
+    assert(
+      myAfterReplace.submission?.submission_id === replacedSubmission.submission_id,
+      "Replacement integration should keep returning the latest submission_id"
+    );
+    assert(
+      myAfterReplace.status === "Submitted",
+      "Replaced ungraded on-time submission should remain Submitted"
+    );
+
+    const emptyRegister = await request("POST", "/auth/register", {
+      name: "E2E Empty Assignments Student",
+      email: emptyStudentEmail,
+      password: studentPassword,
+    });
+    assert(emptyRegister.status === 201, "Empty-result student registration should return 201");
+    emptyStudentUserId = emptyRegister.data.user.user_id;
+
+    const emptyProfile = await request(
+      "POST",
+      "/students",
+      {
+        userId: emptyStudentUserId,
+        roll_number: rollNumberFor(testId, "E"),
+        full_name: "E2E Empty Assignments Student",
+        dept_id: departmentId,
+        semester: 5,
+        section: "Z",
+        admission_year: 2024,
+        phone: "9876543210",
+      },
+      adminToken
+    );
+    assert(emptyProfile.status === 201, "Empty-result student profile creation should return 201");
+
+    const emptyLogin = await request("POST", "/auth/login", {
+      email: emptyStudentEmail,
+      password: studentPassword,
+    });
+    assert(emptyLogin.status === 200, "Empty-result student login should return 200");
+    const emptyStudentToken = emptyLogin.data.result.token;
+
+    const emptyMy = await request("GET", "/submissions/my", null, emptyStudentToken);
+    assert(emptyMy.status === 200, "Student with no relevant assignments should still return 200");
+    assert(Array.isArray(emptyMy.data?.assignments), "Empty-result response should include assignments array");
+    assert(
+      emptyMy.data.assignments.length === 0,
+      "Student with no relevant assignments should receive an empty assignments array"
+    );
+    console.log("Verify Empty Result: passed");
+
+    // --------------------------------------------------
     // Failed operations leave consistent storage/DB state
     // --------------------------------------------------
 
@@ -2032,11 +2454,12 @@ async function runTests() {
   } finally {
     await cleanupTestData({
       assignmentIds: createdAssignmentIds,
-      subjectCodes: [subjectCode],
+      subjectCodes: [subjectCode, otherSemesterSubjectCode, otherDepartmentSubjectCode],
       facultyUserIds: [facultyUserId, facultyBUserId],
       studentUserId,
-      studentUserIds: reviewStudentUserIds,
+      studentUserIds: [...reviewStudentUserIds, emptyStudentUserId],
       departmentId,
+      departmentIds: [otherDepartmentId],
       userEmails: [facultyEmail, studentEmail, ephemeralAdminEmail, ...reviewUserEmails],
     });
 

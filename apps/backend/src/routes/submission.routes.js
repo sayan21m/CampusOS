@@ -8,6 +8,7 @@ import {
   createSubmissionController,
   getAssignmentSubmissionsController,
   gradeSubmissionController,
+  getMyAssignmentsController,
 } from "../controllers/submission.controller.js";
 
 const router = express.Router();
@@ -34,5 +35,12 @@ router.patch(
   validate(gradeSubmissionSchema),
   gradeSubmissionController
 );
+
+router.get(
+  "/my",
+  authenticate,
+  authorize("STUDENT"),
+  getMyAssignmentsController
+)
 
 export default router;

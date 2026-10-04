@@ -3,6 +3,7 @@ import {
   createSubmission,
   getAssignmentSubmissions,
   gradeSubmission,
+  getMyAssignments,
 } from "../services/submission.service.js";
 
 export async function createSubmissionController(req, res) {
@@ -66,9 +67,7 @@ export async function getAssignmentSubmissionsController(req, res) {
 
     const result = await getAssignmentSubmissions(assignment_id, faculty.faculty_id);
 
-    return res.status(200).json({
-      result,
-    });
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Internal server error",
@@ -107,6 +106,31 @@ export async function gradeSubmissionController(req, res) {
       message: "Submission graded successfully",
       submission,
     });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+export async function getMyAssignmentsController(req, res) {
+  try {
+    const user_id = req.user.userId;
+    const student = await prisma.student.findUnique({
+      where: {
+        user_id: user_id,
+      },
+    });
+
+    if (!student) {
+      return res.status(404).json({
+        message: "Student profile not found",
+      });
+    }
+
+    const assignments = await getMyAssignments(student.student_id);
+
+    return res.status(200).json(assignments);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Internal server error",
