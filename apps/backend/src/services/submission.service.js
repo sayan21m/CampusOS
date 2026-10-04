@@ -119,14 +119,14 @@ export async function getAssignmentSubmissions(assignment_id, faculty_id) {
 
   const students = await prisma.student.findMany({
     where: {
-        dept_id: facultyAssignment.subject.dept_id,
-        semester: facultyAssignment.subject.semester,
-        section: facultyAssignment.section,
+      dept_id: facultyAssignment.subject.dept_id,
+      semester: facultyAssignment.subject.semester,
+      section: facultyAssignment.section,
     },
     select: {
-        student_id: true,
-        roll_number: true,
-        full_name: true,
+      student_id: true,
+      roll_number: true,
+      full_name: true,
     },
   });
 
@@ -137,18 +137,20 @@ export async function getAssignmentSubmissions(assignment_id, faculty_id) {
   });
 
   const studentResults = students.map((student) => {
-    const submission = submissions.find((submission) => submission.student_id === student.student_id);
+    const submission = submissions.find(
+      (submission) => submission.student_id === student.student_id
+    );
 
     let status;
 
     if (!submission) {
-        status = "Pending";
+      status = "Pending";
     } else if (submission.marks !== null) {
-        status = "Graded";
+      status = "Graded";
     } else if (submission.is_late) {
-        status = "Late";
+      status = "Late";
     } else {
-        status = "Submitted";
+      status = "Submitted";
     }
 
     return {
@@ -156,17 +158,17 @@ export async function getAssignmentSubmissions(assignment_id, faculty_id) {
       roll_number: student.roll_number,
       full_name: student.full_name,
       submission: submission
-          ? {
-              submission_id: submission.submission_id,
-              submitted_at: submission.submitted_at,
-              is_late: submission.is_late,
-              marks: submission.marks,
-              feedback: submission.feedback,
-              status,
+        ? {
+            submission_id: submission.submission_id,
+            submitted_at: submission.submitted_at,
+            is_late: submission.is_late,
+            marks: submission.marks,
+            feedback: submission.feedback,
+            status,
           }
-          : null,
+        : null,
       status,
-    }
+    };
   });
 
   return {
@@ -179,5 +181,48 @@ export async function getAssignmentSubmissions(assignment_id, faculty_id) {
       max_marks: facultyAssignment.max_marks,
     },
     students: studentResults,
+  };
+}
+
+export async function gradeSubmission(submission_id, faculty_id, marks, feedback) {
+  const submission = await prisma.submission.findUnique({
+    where: {
+      submission_id,
+    },
+  });
+
+  if (!submission) {
+    throw createError("Submission not found", 404);
   }
+
+  const assignment = await prisma.assignment.findUnique({
+    where: {
+      assignment_id: submission.assignment_id,
+    },
+  });
+
+  if (!assignment) {
+    throw createError("Assignment not found", 404);
+  }
+
+  if (assignment.faculty_id !== faculty_id) {
+    throw createError("Assignment not found", 404);
+  }
+
+  if (marks < 0 || marks > assignment.max_marks) {
+    throw createError("Marks must be between 0 and maximum marks", 400);
+  }
+
+  const updatedSubmission = await prisma.submission.update({
+    where: {
+      submission_id,
+    },
+    data: {
+      marks,
+      feedback,
+      graded_at: new Date(),
+    },
+  });
+
+  return updatedSubmission;
 }

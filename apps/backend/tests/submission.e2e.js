@@ -113,10 +113,7 @@ function findStudentResult(students, studentId) {
 
 function assertNoFileUrlLeak(value, label) {
   const serialized = JSON.stringify(value);
-  assert(
-    serialized.includes("file_url") === false,
-    `${label} must not expose file_url`
-  );
+  assert(serialized.includes("file_url") === false, `${label} must not expose file_url`);
 }
 
 function futureDeadline(daysAhead = 7) {
@@ -292,10 +289,7 @@ async function cleanupTestData({
     });
   }
 
-  const allStudentUserIds = [
-    ...(studentUserIds || []),
-    studentUserId,
-  ].filter(Boolean);
+  const allStudentUserIds = [...(studentUserIds || []), studentUserId].filter(Boolean);
 
   if (allStudentUserIds.length > 0) {
     await prisma.student.deleteMany({
@@ -1195,9 +1189,7 @@ async function runTests() {
     // Submission Review: GET /submissions/assignments/:id
     // --------------------------------------------------
 
-    const controllerPath = path.resolve(
-      "apps/backend/src/controllers/submission.controller.js"
-    );
+    const controllerPath = path.resolve("apps/backend/src/controllers/submission.controller.js");
     const routesPath = path.resolve("apps/backend/src/routes/submission.routes.js");
     const controllerSrc = await fs.readFile(controllerPath, "utf8");
     const routesSrc = await fs.readFile(routesPath, "utf8");
@@ -1223,7 +1215,7 @@ async function runTests() {
     );
     assert(
       /authenticate/.test(routesSrc) && /authorize\("FACULTY"\)/.test(routesSrc),
-      "GET /assignments/:id must be protected by authenticate and authorize(\"FACULTY\")"
+      'GET /assignments/:id must be protected by authenticate and authorize("FACULTY")'
     );
     assert(
       /getAssignmentSubmissionsController/.test(routesSrc),
@@ -1357,10 +1349,7 @@ async function runTests() {
       zeroSubmissionReview.status === 200,
       `Zero-submission review should return 200, not 201 (got ${zeroSubmissionReview.status})`
     );
-    assert(
-      zeroSubmissionReview.status !== 201,
-      "Review endpoint must return 200, not 201"
-    );
+    assert(zeroSubmissionReview.status !== 201, "Review endpoint must return 200, not 201");
 
     const zeroPayload = zeroSubmissionReview.data?.result;
     assert(zeroPayload?.assignment, "Zero-submission review should include assignment");
@@ -1411,10 +1400,7 @@ async function runTests() {
       facultyBToken
     );
     console.log("Review Unrelated Faculty:", reviewFacultyB.status);
-    assert(
-      reviewFacultyB.status === 404,
-      "Non-owner FACULTY review access should return 404"
-    );
+    assert(reviewFacultyB.status === 404, "Non-owner FACULTY review access should return 404");
     assert(
       reviewFacultyB.data?.result == null && reviewFacultyB.data?.assignment == null,
       "Non-owner FACULTY response must not leak assignment data"
@@ -1516,17 +1502,17 @@ async function runTests() {
 
     const reviewPayload = reviewSuccess.data?.result;
     assert(reviewPayload?.assignment, "Successful review response should include assignment");
-    assert(Array.isArray(reviewPayload?.students), "Successful review response should include students");
+    assert(
+      Array.isArray(reviewPayload?.students),
+      "Successful review response should include students"
+    );
 
     const reviewAssignmentPayload = reviewPayload.assignment;
     assert(
       reviewAssignmentPayload.assignment_id === reviewAssignment.assignment_id,
       "Review assignment_id should match"
     );
-    assert(
-      reviewAssignmentPayload.title === reviewAssignment.title,
-      "Review title should match"
-    );
+    assert(reviewAssignmentPayload.title === reviewAssignment.title, "Review title should match");
     assert(
       reviewAssignmentPayload.subject_id === reviewAssignment.subject_id,
       "Review subject_id should match"
@@ -1580,19 +1566,21 @@ async function runTests() {
       "Pending student full_name should match"
     );
 
-    const submittedResult = findStudentResult(
-      reviewPayload.students,
-      submittedStudent.studentId
+    const submittedResult = findStudentResult(reviewPayload.students, submittedStudent.studentId);
+    assert(
+      submittedResult.status === "Submitted",
+      "On-time ungraded submission should be Submitted"
     );
-    assert(submittedResult.status === "Submitted", "On-time ungraded submission should be Submitted");
     assert(submittedResult.submission, "Submitted student should include submission object");
     assert(
-      submittedResult.submission.submission_id ===
-        submittedUpload.data.submission.submission_id,
+      submittedResult.submission.submission_id === submittedUpload.data.submission.submission_id,
       "Submitted submission_id should match"
     );
     assert(submittedResult.submission.submitted_at, "Submitted submission needs submitted_at");
-    assert(submittedResult.submission.is_late === false, "Submitted submission is_late should be false");
+    assert(
+      submittedResult.submission.is_late === false,
+      "Submitted submission is_late should be false"
+    );
     assert(submittedResult.submission.marks == null, "Submitted submission marks should be null");
     assert(
       submittedResult.submission.feedback == null,
@@ -1647,6 +1635,371 @@ async function runTests() {
     console.log("Verify Review Ownership Isolation: passed");
 
     // --------------------------------------------------
+    // Faculty Submission Grading: PATCH /submissions/:id/grade
+    // --------------------------------------------------
+
+    const gradeTargetSubmissionId = submittedUpload.data.submission.submission_id;
+    assert(
+      gradeTargetSubmissionId,
+      "Review submitted upload should provide a submission_id to grade"
+    );
+
+    const gradeTargetBefore = await prisma.submission.findUnique({
+      where: { submission_id: gradeTargetSubmissionId },
+    });
+    assert(gradeTargetBefore, "Grade target submission should exist before grading tests");
+    assert(
+      gradeTargetBefore.marks == null,
+      "Grade target should start ungraded for clean assertions"
+    );
+
+    const gradeNoAuth = await request("PATCH", `/submissions/${gradeTargetSubmissionId}/grade`, {
+      marks: 85,
+      feedback: "Good work.",
+    });
+    console.log("Grade No Authorization:", gradeNoAuth.status);
+    assert(gradeNoAuth.status === 401, "Grading without Authorization should return 401");
+
+    const gradeStudentForbidden = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      studentToken
+    );
+    console.log("Grade Student Forbidden:", gradeStudentForbidden.status);
+    assert(gradeStudentForbidden.status === 403, "STUDENT grading should return 403");
+
+    const gradeInvalidAbc = await request(
+      "PATCH",
+      "/submissions/abc/grade",
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyToken
+    );
+    console.log("Grade Invalid Submission ID:", gradeInvalidAbc.status);
+    assert(gradeInvalidAbc.status === 400, "Invalid submission ID /abc should return 400");
+
+    const gradeInvalidZero = await request(
+      "PATCH",
+      "/submissions/0/grade",
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyToken
+    );
+    assert(gradeInvalidZero.status === 400, "Invalid submission ID /0 should return 400");
+
+    const gradeInvalidNegative = await request(
+      "PATCH",
+      "/submissions/-1/grade",
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyToken
+    );
+    assert(gradeInvalidNegative.status === 400, "Invalid submission ID /-1 should return 400");
+
+    const gradeNonexistent = await request(
+      "PATCH",
+      "/submissions/99999999/grade",
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyToken
+    );
+    console.log("Grade Nonexistent Submission:", gradeNonexistent.status);
+    assert(gradeNonexistent.status === 404, "Nonexistent submission grading should return 404");
+
+    const gradeUnrelatedFaculty = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyBToken
+    );
+    console.log("Grade Unrelated Faculty:", gradeUnrelatedFaculty.status);
+    assert(gradeUnrelatedFaculty.status === 404, "Non-owner FACULTY grading should return 404");
+
+    const afterUnrelatedFaculty = await prisma.submission.findUnique({
+      where: { submission_id: gradeTargetSubmissionId },
+    });
+    assert(
+      afterUnrelatedFaculty,
+      "Submission should still exist after unrelated faculty grade attempt"
+    );
+    assert(
+      afterUnrelatedFaculty.marks === gradeTargetBefore.marks,
+      "Unrelated faculty must not modify marks"
+    );
+    assert(
+      afterUnrelatedFaculty.feedback === gradeTargetBefore.feedback,
+      "Unrelated faculty must not modify feedback"
+    );
+    assert(
+      afterUnrelatedFaculty.graded_at === gradeTargetBefore.graded_at,
+      "Unrelated faculty must not modify graded_at"
+    );
+
+    const gradeValid = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 85,
+        feedback: "Good work.",
+      },
+      facultyToken
+    );
+    console.log("Grade Valid Submission:", gradeValid.status);
+    assert(gradeValid.status === 200, "Valid faculty grading should return 200");
+    assert(
+      gradeValid.data?.message === "Submission graded successfully",
+      'Valid grade response message should be "Submission graded successfully"'
+    );
+    assert(gradeValid.data?.submission, "Valid grade response should include submission");
+    assert(
+      Number(gradeValid.data.submission.marks) === 85,
+      "Valid grade response marks should be 85"
+    );
+    assert(
+      gradeValid.data.submission.feedback === "Good work.",
+      "Valid grade response feedback should be persisted in response"
+    );
+    assert(gradeValid.data.submission.graded_at, "Valid grade response should populate graded_at");
+
+    const gradePersisted = await prisma.submission.findUnique({
+      where: { submission_id: gradeTargetSubmissionId },
+    });
+    assert(gradePersisted, "Graded submission should exist in database");
+    assert(Number(gradePersisted.marks) === 85, "Persisted marks should be 85");
+    assert(gradePersisted.feedback === "Good work.", "Persisted feedback should match");
+    assert(gradePersisted.graded_at instanceof Date, "Persisted graded_at should not be null");
+    console.log("Verify Grade Persistence: passed");
+
+    const reviewAfterGrade = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      facultyToken
+    );
+    assert(
+      reviewAfterGrade.status === 200,
+      `Review after grading should return 200 (got ${reviewAfterGrade.status})`
+    );
+    const reviewAfterGradeStudent = findStudentResult(
+      reviewAfterGrade.data?.result?.students,
+      submittedStudent.studentId
+    );
+    assert(reviewAfterGradeStudent, "Review after grading should still include the graded student");
+    assert(reviewAfterGradeStudent.status === "Graded", "Review student status should be Graded");
+    assert(
+      reviewAfterGradeStudent.submission?.status === "Graded",
+      "Review submission.status should be Graded"
+    );
+    assert(
+      Number(reviewAfterGradeStudent.submission.marks) === 85,
+      "Review submission.marks should equal graded marks"
+    );
+    assert(
+      reviewAfterGradeStudent.submission.feedback === "Good work.",
+      "Review submission.feedback should equal graded feedback"
+    );
+    assert(
+      Object.prototype.hasOwnProperty.call(reviewAfterGradeStudent.submission, "graded_at") ===
+        false,
+      "Review API should not expose graded_at when it is not part of the overview payload"
+    );
+    console.log("Verify Graded Status: passed");
+
+    const maxMarks = Number(reviewAssignment.max_marks);
+    assert(
+      Number.isInteger(maxMarks) && maxMarks > 0,
+      "Review assignment max_marks should be usable"
+    );
+
+    const gradeZeroMarks = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 0,
+        feedback: "Needs improvement.",
+      },
+      facultyToken
+    );
+    console.log("Grade Zero Marks:", gradeZeroMarks.status);
+    assert(gradeZeroMarks.status === 200, "marks = 0 should return 200");
+    assert(
+      Number(gradeZeroMarks.data?.submission?.marks) === 0,
+      "Zero marks should persist in response"
+    );
+
+    const gradeMaximumMarks = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: maxMarks,
+        feedback: "Full marks.",
+      },
+      facultyToken
+    );
+    console.log("Grade Maximum Marks:", gradeMaximumMarks.status);
+    assert(gradeMaximumMarks.status === 200, "marks = max_marks should return 200");
+    assert(
+      Number(gradeMaximumMarks.data?.submission?.marks) === maxMarks,
+      "Maximum marks should persist in response"
+    );
+
+    const gradeExcessiveMarks = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: maxMarks + 1,
+        feedback: "Too high.",
+      },
+      facultyToken
+    );
+    console.log("Grade Excessive Marks:", gradeExcessiveMarks.status);
+    assert(gradeExcessiveMarks.status === 400, "marks > max_marks should return 400");
+
+    const gradeNegativeMarks = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: -1,
+        feedback: "Negative.",
+      },
+      facultyToken
+    );
+    console.log("Grade Negative Marks:", gradeNegativeMarks.status);
+    assert(gradeNegativeMarks.status === 400, "marks < 0 should return 400");
+
+    const gradeDecimalMarks = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 85.5,
+        feedback: "Decimal.",
+      },
+      facultyToken
+    );
+    console.log("Grade Decimal Marks:", gradeDecimalMarks.status);
+    assert(gradeDecimalMarks.status === 400, "non-integer marks should return 400");
+
+    const gradeFeedbackOmitted = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 72,
+      },
+      facultyToken
+    );
+    assert(gradeFeedbackOmitted.status === 200, "Omitting feedback should return 200");
+
+    const gradeEmptyFeedback = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 72,
+        feedback: "",
+      },
+      facultyToken
+    );
+    console.log("Grade Empty Feedback:", gradeEmptyFeedback.status);
+    assert(gradeEmptyFeedback.status === 400, 'feedback = "" should return 400');
+
+    const gradeWhitespaceFeedback = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 72,
+        feedback: "   ",
+      },
+      facultyToken
+    );
+    assert(gradeWhitespaceFeedback.status === 400, "Whitespace-only feedback should return 400");
+
+    const gradeLongFeedback = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 72,
+        feedback: "x".repeat(501),
+      },
+      facultyToken
+    );
+    console.log("Grade Long Feedback:", gradeLongFeedback.status);
+    assert(
+      gradeLongFeedback.status === 400,
+      "feedback longer than 500 characters should return 400"
+    );
+
+    const firstRegrade = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 70,
+        feedback: "First grade pass.",
+      },
+      facultyToken
+    );
+    assert(firstRegrade.status === 200, "Initial re-grade setup should return 200");
+    const firstGradedAt = new Date(firstRegrade.data.submission.graded_at);
+    assert(!Number.isNaN(firstGradedAt.getTime()), "First grade graded_at should be a valid date");
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const regradeResponse = await request(
+      "PATCH",
+      `/submissions/${gradeTargetSubmissionId}/grade`,
+      {
+        marks: 92,
+        feedback: "Improved after revision.",
+      },
+      facultyToken
+    );
+    console.log("Re-grade Submission:", regradeResponse.status);
+    assert(regradeResponse.status === 200, "Re-grading should return 200");
+    assert(
+      Number(regradeResponse.data?.submission?.marks) === 92,
+      "Re-grade response marks should be the latest value"
+    );
+    assert(
+      regradeResponse.data?.submission?.feedback === "Improved after revision.",
+      "Re-grade response feedback should be the latest value"
+    );
+    assert(
+      regradeResponse.data?.submission?.graded_at,
+      "Re-grade response should populate graded_at"
+    );
+
+    const regradePersisted = await prisma.submission.findUnique({
+      where: { submission_id: gradeTargetSubmissionId },
+    });
+    assert(Number(regradePersisted.marks) === 92, "Re-grade persisted marks should be 92");
+    assert(
+      regradePersisted.feedback === "Improved after revision.",
+      "Re-grade persisted feedback should match latest value"
+    );
+    assert(
+      regradePersisted.graded_at instanceof Date,
+      "Re-grade persisted graded_at should not be null"
+    );
+    assert(
+      regradePersisted.graded_at.getTime() >= firstGradedAt.getTime(),
+      "Re-grade graded_at should be updated/populated relative to the previous grade"
+    );
+    console.log("Verify Re-grade Persistence: passed");
+
+    // --------------------------------------------------
     // Failed operations leave consistent storage/DB state
     // --------------------------------------------------
 
@@ -1684,12 +2037,7 @@ async function runTests() {
       studentUserId,
       studentUserIds: reviewStudentUserIds,
       departmentId,
-      userEmails: [
-        facultyEmail,
-        studentEmail,
-        ephemeralAdminEmail,
-        ...reviewUserEmails,
-      ],
+      userEmails: [facultyEmail, studentEmail, ephemeralAdminEmail, ...reviewUserEmails],
     });
 
     await prisma.$disconnect();
