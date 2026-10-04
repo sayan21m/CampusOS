@@ -31,7 +31,7 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --passWithNoTests",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --passWithNoTests",
     "test:watch:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --passWithNoTests",
-    "test:e2e": "node apps/backend/tests/faculty.e2e.js && node apps/backend/tests/profile.e2e.js && node apps/backend/tests/subject.e2e.js && node apps/backend/tests/assignment.e2e.js",
+    "test:e2e": "node apps/backend/tests/faculty.e2e.js && node apps/backend/tests/profile.e2e.js && node apps/backend/tests/subject.e2e.js && node apps/backend/tests/assignment.e2e.js && node apps/backend/tests/submission.e2e.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate || exit 0"
   },
@@ -52,6 +52,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
     "pg": "^8.23.0",
     "resend": "^6.30.0",
     "zod": "^4.6.5"
