@@ -61,8 +61,9 @@ model Student {
   phone          String?
   photo_url      String?
 
-  user       User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  department Department @relation(fields: [dept_id], references: [dept_id])
+  user        User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department  Department   @relation(fields: [dept_id], references: [dept_id])
+  submissions Submission[]
 
   @@index([dept_id])
 }
@@ -77,9 +78,10 @@ model Faculty {
   phone       String?
   photo_url   String?
 
-  user            User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  department      Department  @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
-  hodOfDepartment Department? @relation("DepartmentHOD")
+  user            User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department      Department   @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
+  hodOfDepartment Department?  @relation("DepartmentHOD")
+  assignments     Assignment[]
 
   @@index([dept_id])
 }
@@ -93,7 +95,49 @@ model Subject {
   credits      Int
   is_active    Boolean @default(true)
 
-  department Department @relation(fields: [dept_id], references: [dept_id])
+  department  Department   @relation(fields: [dept_id], references: [dept_id])
+  assignments Assignment[]
 
   @@index([dept_id])
+}
+
+model Assignment {
+  assignment_id  Int      @id @default(autoincrement())
+  subject_id     Int
+  faculty_id     Int
+  title          String
+  description    String
+  section        String
+  deadline       DateTime
+  max_marks      Int
+  allow_late     Boolean  @default(false)
+  attachment_url String?
+  created_at     DateTime @default(now())
+
+  subject     Subject      @relation(fields: [subject_id], references: [subject_id])
+  faculty     Faculty      @relation(fields: [faculty_id], references: [faculty_id])
+  submissions Submission[]
+
+  @@index([subject_id])
+  @@index([faculty_id])
+  @@index([deadline])
+}
+
+model Submission {
+  submission_id Int       @id @default(autoincrement())
+  assignment_id Int
+  student_id    Int
+  file_url      String
+  submitted_at  DateTime  @default(now())
+  is_late       Boolean   @default(false)
+  marks         Int?
+  feedback      String?
+  graded_at     DateTime?
+
+  assignment Assignment @relation(fields: [assignment_id], references: [assignment_id], onDelete: Cascade)
+  student    Student    @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@unique([assignment_id, student_id])
+  @@index([assignment_id])
+  @@index([student_id])
 }

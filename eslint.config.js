@@ -7,6 +7,7 @@ export default [
   {
     ignores: [
       "node_modules/**",
+      "apps/frontend/**",
       "**/dist/**",
       "**/generated/**",
       "**/build/**",
