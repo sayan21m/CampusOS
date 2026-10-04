@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/forgotpass";
 import ResetPassword from "./pages/ResetPassword";
+import StudentProfile from "./pages/student_prof";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -31,6 +32,15 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/student-profile"
+        element={
+          <ProtectedRoute>
+            <StudentProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/student_prof" element={<Navigate to="/student-profile" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
