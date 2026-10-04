@@ -98,3 +98,86 @@ export async function createSubmission(assignment_id, student_id, file) {
     throw error;
   }
 }
+
+export async function getAssignmentSubmissions(assignment_id, faculty_id) {
+  const facultyAssignment = await prisma.assignment.findUnique({
+    where: {
+      assignment_id,
+    },
+    include: {
+      subject: true,
+    },
+  });
+
+  if (!facultyAssignment) {
+    throw createError("Assignment not found", 404);
+  }
+
+  if (facultyAssignment.faculty_id !== faculty_id) {
+    throw createError("Assignment not found", 404);
+  }
+
+  const students = await prisma.student.findMany({
+    where: {
+        dept_id: facultyAssignment.subject.dept_id,
+        semester: facultyAssignment.subject.semester,
+        section: facultyAssignment.section,
+    },
+    select: {
+        student_id: true,
+        roll_number: true,
+        full_name: true,
+    },
+  });
+
+  const submissions = await prisma.submission.findMany({
+    where: {
+      assignment_id,
+    },
+  });
+
+  const studentResults = students.map((student) => {
+    const submission = submissions.find((submission) => submission.student_id === student.student_id);
+
+    let status;
+
+    if (!submission) {
+        status = "Pending";
+    } else if (submission.marks !== null) {
+        status = "Graded";
+    } else if (submission.is_late) {
+        status = "Late";
+    } else {
+        status = "Submitted";
+    }
+
+    return {
+      student_id: student.student_id,
+      roll_number: student.roll_number,
+      full_name: student.full_name,
+      submission: submission
+          ? {
+              submission_id: submission.submission_id,
+              submitted_at: submission.submitted_at,
+              is_late: submission.is_late,
+              marks: submission.marks,
+              feedback: submission.feedback,
+              status,
+          }
+          : null,
+      status,
+    }
+  });
+
+  return {
+    assignment: {
+      assignment_id,
+      title: facultyAssignment.title,
+      subject_id: facultyAssignment.subject_id,
+      section: facultyAssignment.section,
+      deadline: facultyAssignment.deadline,
+      max_marks: facultyAssignment.max_marks,
+    },
+    students: studentResults,
+  }
+}

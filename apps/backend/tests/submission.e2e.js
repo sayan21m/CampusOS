@@ -103,8 +103,20 @@ function subjectCodeFor(testId, suffix = "") {
   return `US${String(testId).slice(-8)}${suffix}`.slice(0, 15);
 }
 
-function rollNumberFor(testId) {
-  return `UR${String(testId).slice(-8)}`.slice(0, 15);
+function rollNumberFor(testId, suffix = "") {
+  return `UR${String(testId).slice(-8)}${suffix}`.slice(0, 15);
+}
+
+function findStudentResult(students, studentId) {
+  return (students || []).find((student) => student.student_id === studentId);
+}
+
+function assertNoFileUrlLeak(value, label) {
+  const serialized = JSON.stringify(value);
+  assert(
+    serialized.includes("file_url") === false,
+    `${label} must not expose file_url`
+  );
 }
 
 function futureDeadline(daysAhead = 7) {
@@ -248,6 +260,7 @@ async function cleanupTestData({
   subjectCodes,
   facultyUserIds,
   studentUserId,
+  studentUserIds,
   departmentId,
   userEmails,
 }) {
@@ -279,9 +292,14 @@ async function cleanupTestData({
     });
   }
 
-  if (studentUserId) {
+  const allStudentUserIds = [
+    ...(studentUserIds || []),
+    studentUserId,
+  ].filter(Boolean);
+
+  if (allStudentUserIds.length > 0) {
     await prisma.student.deleteMany({
-      where: { user_id: studentUserId },
+      where: { user_id: { in: allStudentUserIds } },
     });
   }
 
@@ -349,21 +367,36 @@ async function runTests() {
 
   const testId = Date.now();
   const facultyEmail = `e2e.submission.faculty.${testId}@campusos.test`;
+  const facultyBEmail = `e2e.submission.faculty.b.${testId}@campusos.test`;
   const studentEmail = `e2e.submission.student.${testId}@campusos.test`;
+  const reviewPendingEmail = `e2e.submission.review.pending.${testId}@campusos.test`;
+  const reviewSubmittedEmail = `e2e.submission.review.submitted.${testId}@campusos.test`;
+  const reviewLateEmail = `e2e.submission.review.late.${testId}@campusos.test`;
+  const reviewGradedEmail = `e2e.submission.review.graded.${testId}@campusos.test`;
   const departmentName = `E2E Submission Department ${testId}`;
   const departmentCode = deptCodeFor(testId);
   const subjectCode = subjectCodeFor(testId);
   const employeeId = employeeIdFor(testId);
+  const employeeIdB = employeeIdFor(testId, "B");
   const facultyPassword = "Faculty@123456";
   const studentPassword = "Student@123";
 
   let departmentId;
   let subjectId;
   let facultyUserId;
+  let facultyBUserId;
   let studentUserId;
   let studentId;
   let ephemeralAdminEmail;
   const createdAssignmentIds = [];
+  const reviewStudentUserIds = [];
+  const reviewUserEmails = [
+    facultyBEmail,
+    reviewPendingEmail,
+    reviewSubmittedEmail,
+    reviewLateEmail,
+    reviewGradedEmail,
+  ];
 
   const pdfPath = await writeTempFile(
     "sample-report.pdf",
@@ -1159,6 +1192,461 @@ async function runTests() {
     console.log("Verify Oversized File Not Persisted: passed");
 
     // --------------------------------------------------
+    // Submission Review: GET /submissions/assignments/:id
+    // --------------------------------------------------
+
+    const controllerPath = path.resolve(
+      "apps/backend/src/controllers/submission.controller.js"
+    );
+    const routesPath = path.resolve("apps/backend/src/routes/submission.routes.js");
+    const controllerSrc = await fs.readFile(controllerPath, "utf8");
+    const routesSrc = await fs.readFile(routesPath, "utf8");
+
+    assert(
+      /export async function getAssignmentSubmissionsController\s*\(/.test(controllerSrc),
+      "Controller should be named getAssignmentSubmissionsController"
+    );
+    assert(
+      /await getAssignmentSubmissions\s*\(\s*assignment_id\s*,\s*faculty\.faculty_id\s*\)/.test(
+        controllerSrc
+      ),
+      "Controller should call getAssignmentSubmissions(assignment_id, faculty.faculty_id)"
+    );
+
+    const controllerBody = controllerSrc.replace(
+      /export async function getAssignmentSubmissionsController/,
+      ""
+    );
+    assert(
+      /getAssignmentSubmissionsController\s*\(/.test(controllerBody) === false,
+      "getAssignmentSubmissionsController must not call itself"
+    );
+    assert(
+      /authenticate/.test(routesSrc) && /authorize\("FACULTY"\)/.test(routesSrc),
+      "GET /assignments/:id must be protected by authenticate and authorize(\"FACULTY\")"
+    );
+    assert(
+      /getAssignmentSubmissionsController/.test(routesSrc),
+      "GET /assignments/:id must use getAssignmentSubmissionsController"
+    );
+    console.log("Verify Review Controller Wiring: passed");
+
+    const facultyBUser = await createTemporaryUser({
+      email: facultyBEmail,
+      name: "E2E Submission Faculty B",
+      role: "FACULTY",
+      password: facultyPassword,
+    });
+    facultyBUserId = facultyBUser.user_id;
+    assert(facultyBUserId, "Faculty B user should have user_id");
+
+    const facultyBProfileResponse = await request(
+      "POST",
+      "/faculty",
+      {
+        userId: facultyBUserId,
+        employee_id: employeeIdB,
+        full_name: "E2E Submission Faculty B",
+        dept_id: departmentId,
+        designation: "Assistant Professor",
+        phone: "9876543211",
+      },
+      adminToken
+    );
+    assert(
+      facultyBProfileResponse.status === 201,
+      `Faculty B profile creation should return 201 (got ${facultyBProfileResponse.status})`
+    );
+
+    const facultyBLoginResponse = await request("POST", "/auth/login", {
+      email: facultyBEmail,
+      password: facultyPassword,
+    });
+    assert(facultyBLoginResponse.status === 200, "Faculty B login should return 200");
+    const facultyBToken = facultyBLoginResponse.data.result.token;
+    assert(facultyBToken, "Faculty B login should return a fresh JWT token");
+
+    async function createReviewStudent({ email, name, rollSuffix }) {
+      const registerResponse = await request("POST", "/auth/register", {
+        name,
+        email,
+        password: studentPassword,
+      });
+      assert(
+        registerResponse.status === 201,
+        `Review student registration should return 201 for ${email}`
+      );
+
+      const userId = registerResponse.data.user.user_id;
+      reviewStudentUserIds.push(userId);
+
+      const profileResponse = await request(
+        "POST",
+        "/students",
+        {
+          userId,
+          roll_number: rollNumberFor(testId, rollSuffix),
+          full_name: name,
+          dept_id: departmentId,
+          semester: 5,
+          section: "R",
+          admission_year: 2024,
+          phone: "9876543210",
+        },
+        adminToken
+      );
+      assert(
+        profileResponse.status === 201,
+        `Review student profile creation should return 201 for ${email}`
+      );
+
+      const loginResponse = await request("POST", "/auth/login", {
+        email,
+        password: studentPassword,
+      });
+      assert(loginResponse.status === 200, `Review student login should return 200 for ${email}`);
+
+      return {
+        userId,
+        studentId: profileResponse.data.student.studentId,
+        token: loginResponse.data.result.token,
+        rollNumber: profileResponse.data.student.roll_number,
+        fullName: name,
+      };
+    }
+
+    const pendingStudent = await createReviewStudent({
+      email: reviewPendingEmail,
+      name: "E2E Review Pending Student",
+      rollSuffix: "P",
+    });
+    const submittedStudent = await createReviewStudent({
+      email: reviewSubmittedEmail,
+      name: "E2E Review Submitted Student",
+      rollSuffix: "S",
+    });
+    const lateStudent = await createReviewStudent({
+      email: reviewLateEmail,
+      name: "E2E Review Late Student",
+      rollSuffix: "L",
+    });
+    const gradedStudent = await createReviewStudent({
+      email: reviewGradedEmail,
+      name: "E2E Review Graded Student",
+      rollSuffix: "G",
+    });
+
+    const reviewAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId,
+      title: `E2E Submission Review ${testId}`,
+      allowLate: true,
+      section: "R",
+    });
+    createdAssignmentIds.push(reviewAssignment.assignment_id);
+
+    const zeroSubmissionReview = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      facultyToken
+    );
+
+    console.log("Review Zero Submissions:", zeroSubmissionReview.status);
+    assert(
+      zeroSubmissionReview.status === 200,
+      `Zero-submission review should return 200, not 201 (got ${zeroSubmissionReview.status})`
+    );
+    assert(
+      zeroSubmissionReview.status !== 201,
+      "Review endpoint must return 200, not 201"
+    );
+
+    const zeroPayload = zeroSubmissionReview.data?.result;
+    assert(zeroPayload?.assignment, "Zero-submission review should include assignment");
+    assert(Array.isArray(zeroPayload?.students), "Zero-submission review should include students");
+    assert(
+      zeroPayload.students.length >= 4,
+      "Zero-submission review should include all section students even with no submissions"
+    );
+    assert(
+      zeroPayload.students.every((student) => student.status === "Pending"),
+      "All students should be Pending when there are zero submissions"
+    );
+    assert(
+      zeroPayload.students.every((student) => student.submission === null),
+      "Pending students should have null submission objects"
+    );
+    assertNoFileUrlLeak(zeroSubmissionReview.data, "Zero-submission review response");
+
+    const reviewNoAuth = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`
+    );
+    console.log("Review No Authorization:", reviewNoAuth.status);
+    assert(reviewNoAuth.status === 401, "Review without Authorization should return 401");
+
+    const reviewStudentForbidden = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      studentToken
+    );
+    console.log("Review Student Forbidden:", reviewStudentForbidden.status);
+    assert(reviewStudentForbidden.status === 403, "STUDENT review access should return 403");
+
+    const reviewFacultyAllowed = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      facultyToken
+    );
+    console.log("Review Faculty Allowed:", reviewFacultyAllowed.status);
+    assert(reviewFacultyAllowed.status === 200, "Owning FACULTY review access should return 200");
+
+    const reviewFacultyB = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      facultyBToken
+    );
+    console.log("Review Unrelated Faculty:", reviewFacultyB.status);
+    assert(
+      reviewFacultyB.status === 404,
+      "Non-owner FACULTY review access should return 404"
+    );
+    assert(
+      reviewFacultyB.data?.result == null && reviewFacultyB.data?.assignment == null,
+      "Non-owner FACULTY response must not leak assignment data"
+    );
+    assert(
+      /not found/i.test(reviewFacultyB.data?.message || ""),
+      "Non-owner FACULTY should receive a not-found style message"
+    );
+
+    const reviewInvalidAbc = await request(
+      "GET",
+      "/submissions/assignments/abc",
+      null,
+      facultyToken
+    );
+    console.log("Review Invalid Assignment ID abc:", reviewInvalidAbc.status);
+    assert(reviewInvalidAbc.status === 400, "Invalid assignment ID /abc should return 400");
+
+    const reviewInvalidZero = await request(
+      "GET",
+      "/submissions/assignments/0",
+      null,
+      facultyToken
+    );
+    console.log("Review Invalid Assignment ID 0:", reviewInvalidZero.status);
+    assert(reviewInvalidZero.status === 400, "Invalid assignment ID /0 should return 400");
+
+    const reviewInvalidNegative = await request(
+      "GET",
+      "/submissions/assignments/-1",
+      null,
+      facultyToken
+    );
+    console.log("Review Invalid Assignment ID -1:", reviewInvalidNegative.status);
+    assert(reviewInvalidNegative.status === 400, "Invalid assignment ID /-1 should return 400");
+
+    const reviewNonexistent = await request(
+      "GET",
+      "/submissions/assignments/99999999",
+      null,
+      facultyToken
+    );
+    console.log("Review Nonexistent Assignment:", reviewNonexistent.status);
+    assert(reviewNonexistent.status === 404, "Nonexistent assignment review should return 404");
+
+    const submittedUpload = await uploadRequest(
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      pdfPath,
+      submittedStudent.token,
+      "review-submitted.pdf"
+    );
+    assert(
+      submittedUpload.status === 201,
+      `Submitted-status student upload should return 201 (got ${submittedUpload.status})`
+    );
+
+    const gradedUpload = await uploadRequest(
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      pdfPath,
+      gradedStudent.token,
+      "review-graded.pdf"
+    );
+    assert(
+      gradedUpload.status === 201,
+      `Graded-status student upload should return 201 (got ${gradedUpload.status})`
+    );
+
+    await prisma.submission.update({
+      where: { submission_id: gradedUpload.data.submission.submission_id },
+      data: {
+        marks: 88,
+        feedback: "Solid work",
+        graded_at: new Date(),
+      },
+    });
+
+    await prisma.submission.create({
+      data: {
+        assignment_id: reviewAssignment.assignment_id,
+        student_id: lateStudent.studentId,
+        file_url: `submissions/assignment-${reviewAssignment.assignment_id}/student-${lateStudent.studentId}/seeded-late.pdf`,
+        submitted_at: new Date(),
+        is_late: true,
+        marks: null,
+        feedback: null,
+      },
+    });
+
+    const reviewSuccess = await request(
+      "GET",
+      `/submissions/assignments/${reviewAssignment.assignment_id}`,
+      null,
+      facultyToken
+    );
+
+    console.log("Review Success:", reviewSuccess.status);
+    assert(reviewSuccess.status === 200, "Faculty review success should return 200");
+    assert(reviewSuccess.status !== 201, "Faculty review success must not return 201");
+
+    const reviewPayload = reviewSuccess.data?.result;
+    assert(reviewPayload?.assignment, "Successful review response should include assignment");
+    assert(Array.isArray(reviewPayload?.students), "Successful review response should include students");
+
+    const reviewAssignmentPayload = reviewPayload.assignment;
+    assert(
+      reviewAssignmentPayload.assignment_id === reviewAssignment.assignment_id,
+      "Review assignment_id should match"
+    );
+    assert(
+      reviewAssignmentPayload.title === reviewAssignment.title,
+      "Review title should match"
+    );
+    assert(
+      reviewAssignmentPayload.subject_id === reviewAssignment.subject_id,
+      "Review subject_id should match"
+    );
+    assert(
+      reviewAssignmentPayload.section === "R",
+      "Review section should match assignment section"
+    );
+    assert(reviewAssignmentPayload.deadline, "Review deadline should be present");
+    assert(
+      Number(reviewAssignmentPayload.max_marks) === Number(reviewAssignment.max_marks),
+      "Review max_marks should match"
+    );
+
+    const expectedStudentIds = [
+      pendingStudent.studentId,
+      submittedStudent.studentId,
+      lateStudent.studentId,
+      gradedStudent.studentId,
+    ];
+
+    for (const expectedId of expectedStudentIds) {
+      assert(
+        findStudentResult(reviewPayload.students, expectedId),
+        `Review students array must include student_id ${expectedId}`
+      );
+    }
+
+    assert(
+      findStudentResult(reviewPayload.students, pendingStudent.studentId),
+      "Students without submissions must still appear in the students array (FR-25)"
+    );
+
+    for (const student of reviewPayload.students) {
+      assert(student.student_id != null, "Each student result needs student_id");
+      assert(student.roll_number != null, "Each student result needs roll_number");
+      assert(typeof student.full_name === "string", "Each student result needs full_name");
+      assert("submission" in student, "Each student result needs submission field");
+      assert(typeof student.status === "string", "Each student result needs status");
+    }
+
+    const pendingResult = findStudentResult(reviewPayload.students, pendingStudent.studentId);
+    assert(pendingResult.status === "Pending", "Student without submission should be Pending");
+    assert(pendingResult.submission === null, "Pending student submission should be null");
+    assert(
+      pendingResult.roll_number === pendingStudent.rollNumber,
+      "Pending student roll_number should match"
+    );
+    assert(
+      pendingResult.full_name === pendingStudent.fullName,
+      "Pending student full_name should match"
+    );
+
+    const submittedResult = findStudentResult(
+      reviewPayload.students,
+      submittedStudent.studentId
+    );
+    assert(submittedResult.status === "Submitted", "On-time ungraded submission should be Submitted");
+    assert(submittedResult.submission, "Submitted student should include submission object");
+    assert(
+      submittedResult.submission.submission_id ===
+        submittedUpload.data.submission.submission_id,
+      "Submitted submission_id should match"
+    );
+    assert(submittedResult.submission.submitted_at, "Submitted submission needs submitted_at");
+    assert(submittedResult.submission.is_late === false, "Submitted submission is_late should be false");
+    assert(submittedResult.submission.marks == null, "Submitted submission marks should be null");
+    assert(
+      submittedResult.submission.feedback == null,
+      "Submitted submission feedback should be null"
+    );
+    assert(
+      submittedResult.submission.status === "Submitted",
+      "Submitted submission.status should be Submitted"
+    );
+
+    const lateResult = findStudentResult(reviewPayload.students, lateStudent.studentId);
+    assert(lateResult.status === "Late", "Late ungraded submission should be Late");
+    assert(lateResult.submission, "Late student should include submission object");
+    assert(lateResult.submission.is_late === true, "Late submission is_late should be true");
+    assert(lateResult.submission.marks == null, "Late submission marks should be null");
+    assert(lateResult.submission.status === "Late", "Late submission.status should be Late");
+    assert(lateResult.submission.submission_id, "Late submission needs submission_id");
+    assert(lateResult.submission.submitted_at, "Late submission needs submitted_at");
+    assert("feedback" in lateResult.submission, "Late submission needs feedback field");
+
+    const gradedResult = findStudentResult(reviewPayload.students, gradedStudent.studentId);
+    assert(gradedResult.status === "Graded", "Submission with marks should be Graded");
+    assert(gradedResult.submission, "Graded student should include submission object");
+    assert(
+      Number(gradedResult.submission.marks) === 88,
+      "Graded submission marks should match seeded value"
+    );
+    assert(
+      gradedResult.submission.feedback === "Solid work",
+      "Graded submission feedback should match seeded value"
+    );
+    assert(
+      gradedResult.submission.status === "Graded",
+      "Graded submission.status should be Graded"
+    );
+    assert(gradedResult.submission.submission_id, "Graded submission needs submission_id");
+    assert(gradedResult.submission.submitted_at, "Graded submission needs submitted_at");
+    assert("is_late" in gradedResult.submission, "Graded submission needs is_late field");
+
+    assertNoFileUrlLeak(reviewSuccess.data, "Successful review response");
+    for (const student of reviewPayload.students) {
+      if (student.submission) {
+        assert(
+          Object.prototype.hasOwnProperty.call(student.submission, "file_url") === false,
+          "Submission overview objects must not include file_url"
+        );
+      }
+    }
+
+    console.log("Verify Review Success Payload: passed");
+    console.log("Verify Review Student Statuses: passed");
+    console.log("Verify Review Ownership Isolation: passed");
+
+    // --------------------------------------------------
     // Failed operations leave consistent storage/DB state
     // --------------------------------------------------
 
@@ -1192,10 +1680,16 @@ async function runTests() {
     await cleanupTestData({
       assignmentIds: createdAssignmentIds,
       subjectCodes: [subjectCode],
-      facultyUserIds: [facultyUserId],
+      facultyUserIds: [facultyUserId, facultyBUserId],
       studentUserId,
+      studentUserIds: reviewStudentUserIds,
       departmentId,
-      userEmails: [facultyEmail, studentEmail, ephemeralAdminEmail],
+      userEmails: [
+        facultyEmail,
+        studentEmail,
+        ephemeralAdminEmail,
+        ...reviewUserEmails,
+      ],
     });
 
     await prisma.$disconnect();
