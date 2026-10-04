@@ -21,7 +21,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" context-note="" element={<Register />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route
@@ -32,15 +32,15 @@ function App() {
           </ProtectedRoute>
         }
       />
-      {/* Secured behind ProtectedRoute */}
       <Route
-        path="/student_prof"
+        path="/student-profile"
         element={
           <ProtectedRoute>
             <StudentProfile />
           </ProtectedRoute>
         }
       />
+      <Route path="/student_prof" element={<Navigate to="/student-profile" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
