@@ -2,13 +2,16 @@ import React, { useState } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { registerUser } from "../services/auth";
-import "./Login.css"; 
+import "./Login.css";
 
 export default function Register(): React.JSX.Element {
-  const auth = useAuth() as { isAuthenticated: boolean; login: (data: { token: string; user: any }) => void };
+  const auth = useAuth() as {
+    isAuthenticated: boolean;
+    login: (data: { token: string; user: any }) => void;
+  };
   const { isAuthenticated } = auth;
   const navigate = useNavigate();
-  
+
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -95,8 +98,8 @@ export default function Register(): React.JSX.Element {
           <div className="badge-pill">🏛️ Institutional Portal</div>
           <h1>Join CampusOS</h1>
           <p>
-            Set up your academic profile to access centralized notices, study materials, assignment portals, 
-            and real-time attendance tracking.
+            Set up your academic profile to access centralized notices, study materials, assignment
+            portals, and real-time attendance tracking.
           </p>
 
           <div className="campus-stats-grid">

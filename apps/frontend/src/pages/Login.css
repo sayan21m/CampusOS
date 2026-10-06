@@ -243,7 +243,9 @@
   color: #fff;
   font-weight: 650;
   font-size: 0.95rem;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .submit-button:hover:not(:disabled) {
@@ -290,9 +292,9 @@
   .campus-login-wrapper {
     grid-template-columns: 1fr;
   }
-  
+
   .campus-hero-panel {
-    display: none; 
+    display: none;
   }
 
   .login-card-section {

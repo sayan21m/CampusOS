@@ -62,7 +62,7 @@ export default function ForgotPassword(): React.JSX.Element {
       const data = await requestPasswordReset({ email: trimmedEmail });
 
       setSuccessMessage(
-        data?.message || "If the email exists, a password reset link has been sent.",
+        data?.message || "If the email exists, a password reset link has been sent."
       );
     } catch (requestError) {
       setError(getErrorMessage(requestError));

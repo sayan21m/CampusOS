@@ -7,28 +7,137 @@ datasource db {
 }
 
 model User {
-    user_id            Int      @id @default(autoincrement())
-    name               String
-    email              String   @unique
-    passwordHash       String
-    role               String
-    isActive            Boolean  @default(true)
-    failedLoginAttempts Int      @default(0)
-    lockedUntil         DateTime?
-    lastLogin           DateTime?
-    createdAt           DateTime @default(now())
+  user_id             Int       @id @default(autoincrement())
+  name                String
+  email               String    @unique
+  passwordHash        String
+  role                String
+  isActive            Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLogin           DateTime?
+  createdAt           DateTime  @default(now())
 
-    passwordResetTokens passwordResetToken[]
+  passwordResetTokens passwordResetToken[]
+
+  student Student?
+  faculty Faculty?
 }
 
 model passwordResetToken {
-  id Int @id @default(autoincrement())
-  tokenHash String @unique
-  userId Int
-  usedAt DateTime?
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  userId    Int
+  usedAt    DateTime?
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [user_id], onDelete: Cascade)
+
   @@index([userId])
+}
+
+model Department {
+  dept_id        Int    @id @default(autoincrement())
+  dept_name      String @unique
+  dept_code      String @unique
+  hod_faculty_id Int?   @unique
+
+  hod      Faculty?  @relation("DepartmentHOD", fields: [hod_faculty_id], references: [faculty_id])
+  students Student[]
+  faculty  Faculty[] @relation("DepartmentFaculty")
+  subjects Subject[]
+}
+
+model Student {
+  student_id     Int     @id @default(autoincrement())
+  user_id        Int     @unique
+  roll_number    String  @unique
+  full_name      String
+  dept_id        Int
+  semester       Int
+  section        String
+  admission_year Int
+  phone          String?
+  photo_url      String?
+
+  user        User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department  Department   @relation(fields: [dept_id], references: [dept_id])
+  submissions Submission[]
+
+  @@index([dept_id])
+}
+
+model Faculty {
+  faculty_id  Int     @id @default(autoincrement())
+  user_id     Int     @unique
+  employee_id String  @unique
+  full_name   String
+  dept_id     Int
+  designation String
+  phone       String?
+  photo_url   String?
+
+  user            User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department      Department   @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
+  hodOfDepartment Department?  @relation("DepartmentHOD")
+  assignments     Assignment[]
+
+  @@index([dept_id])
+}
+
+model Subject {
+  subject_id   Int     @id @default(autoincrement())
+  subject_code String  @unique
+  subject_name String
+  dept_id      Int
+  semester     Int
+  credits      Int
+  is_active    Boolean @default(true)
+
+  department  Department   @relation(fields: [dept_id], references: [dept_id])
+  assignments Assignment[]
+
+  @@index([dept_id])
+}
+
+model Assignment {
+  assignment_id  Int      @id @default(autoincrement())
+  subject_id     Int
+  faculty_id     Int
+  title          String
+  description    String
+  section        String
+  deadline       DateTime
+  max_marks      Int
+  allow_late     Boolean  @default(false)
+  attachment_url String?
+  created_at     DateTime @default(now())
+
+  subject     Subject      @relation(fields: [subject_id], references: [subject_id])
+  faculty     Faculty      @relation(fields: [faculty_id], references: [faculty_id])
+  submissions Submission[]
+
+  @@index([subject_id])
+  @@index([faculty_id])
+  @@index([deadline])
+}
+
+model Submission {
+  submission_id Int       @id @default(autoincrement())
+  assignment_id Int
+  student_id    Int
+  file_url      String
+  submitted_at  DateTime  @default(now())
+  is_late       Boolean   @default(false)
+  marks         Int?
+  feedback      String?
+  graded_at     DateTime?
+
+  assignment Assignment @relation(fields: [assignment_id], references: [assignment_id], onDelete: Cascade)
+  student    Student    @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@unique([assignment_id, student_id])
+  @@index([assignment_id])
+  @@index([student_id])
 }
