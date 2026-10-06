@@ -13,7 +13,6 @@ body {
   background: #08816a;
 }
 
-
 /* =========================
    MAIN PAGE
 ========================= */
@@ -22,18 +21,12 @@ body {
   min-height: 100vh;
   padding: 25px;
 
-  background: linear-gradient(
-    135deg,
-    #004f42,
-    #007c68,
-    #005b4e
-  );
+  background: linear-gradient(135deg, #004f42, #007c68, #005b4e);
 
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 
 /* =========================
    PROFILE CONTAINER
@@ -53,7 +46,6 @@ body {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
-
 /* =========================
    PROFILE HEADER
 ========================= */
@@ -67,22 +59,12 @@ body {
   color: white;
 
   background:
-    radial-gradient(
-      circle at 80% 20%,
-      rgba(35, 180, 145, 0.3),
-      transparent 35%
-    ),
-    linear-gradient(
-      135deg,
-      #005f4d,
-      #00816c,
-      #006653
-    );
+    radial-gradient(circle at 80% 20%, rgba(35, 180, 145, 0.3), transparent 35%),
+    linear-gradient(135deg, #005f4d, #00816c, #006653);
 
   border-radius: 20px;
   overflow: hidden;
 }
-
 
 /* =========================
    MOVING BLACK BORDER
@@ -131,7 +113,6 @@ body {
   animation: borderMove 3s linear infinite;
 }
 
-
 /* =========================
    BORDER ANIMATION
 ========================= */
@@ -146,7 +127,6 @@ body {
   }
 }
 
-
 /* =========================
    KEEP CONTENT ABOVE BORDER
 ========================= */
@@ -155,7 +135,6 @@ body {
   position: relative;
   z-index: 20;
 }
-
 
 /* =========================
    BACK BUTTON
@@ -178,7 +157,6 @@ body {
   margin-bottom: 25px;
 }
 
-
 /* =========================
    CHANGE PASSWORD
 ========================= */
@@ -193,9 +171,9 @@ body {
 
   border-radius: 25px;
 
-  border: 1px solid rgba(255,255,255,0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 
-  background: rgba(0,90,72,0.35);
+  background: rgba(0, 90, 72, 0.35);
 
   color: white;
 
@@ -203,7 +181,6 @@ body {
 
   cursor: pointer;
 }
-
 
 /* =========================
    PROFILE INTRO
@@ -214,7 +191,6 @@ body {
   align-items: center;
   gap: 35px;
 }
-
 
 /* =========================
    AVATAR
@@ -230,7 +206,7 @@ body {
 
   overflow: hidden;
 
-  border: 4px solid rgba(255,255,255,0.85);
+  border: 4px solid rgba(255, 255, 255, 0.85);
 
   background: #c8eee4;
 }
@@ -241,7 +217,6 @@ body {
 
   object-fit: cover;
 }
-
 
 /* =========================
    PROFILE BUTTONS
@@ -269,13 +244,12 @@ body {
 }
 
 .edit-btn {
-  background: rgba(0,100,80,0.3);
+  background: rgba(0, 100, 80, 0.3);
 }
 
 .view-profile-btn {
   background: #00735d;
 }
-
 
 /* =========================
    NAME
@@ -293,7 +267,6 @@ body {
   margin-right: 12px;
 }
 
-
 /* =========================
    DESIGNATION
 ========================= */
@@ -306,7 +279,6 @@ body {
 
   margin-bottom: 20px;
 }
-
 
 /* =========================
    DETAILS
@@ -327,8 +299,6 @@ body {
   align-items: center;
   gap: 8px;
 }
-
-
 
 /* =========================
    BACK BUTTON
@@ -357,7 +327,6 @@ body {
 .back-btn:hover {
   opacity: 0.8;
 }
-
 
 /* =========================
    CHANGE PASSWORD
@@ -392,7 +361,6 @@ body {
   transform: translateY(-2px);
 }
 
-
 /* =========================
    PROFILE INTRO
 ========================= */
@@ -404,7 +372,6 @@ body {
 
   gap: 35px;
 }
-
 
 /* =========================
    AVATAR
@@ -430,8 +397,7 @@ body {
 
   overflow: hidden;
 
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .avatar-face {
@@ -449,7 +415,6 @@ body {
   background: #bce6dc;
 }
 
-
 /* =========================
    PROFILE INFORMATION
 ========================= */
@@ -457,7 +422,6 @@ body {
 .profile-main-info {
   padding-top: 10px;
 }
-
 
 /* =========================
    EDIT PROFILE
@@ -483,13 +447,11 @@ body {
   transition: 0.3s;
 }
 
-
 .edit-btn:hover {
   background: rgba(255, 255, 255, 0.15);
 
   transform: translateY(-2px);
 }
-
 
 /* =========================
    NAME
@@ -513,7 +475,6 @@ body {
   vertical-align: middle;
 }
 
-
 /* =========================
    DESIGNATION
 ========================= */
@@ -527,7 +488,6 @@ body {
 
   margin-bottom: 20px;
 }
-
 
 /* =========================
    HEADER DETAILS
@@ -553,7 +513,6 @@ body {
   gap: 8px;
 }
 
-
 /* =========================
    INFORMATION GRID
 ========================= */
@@ -567,7 +526,6 @@ body {
 
   gap: 20px;
 }
-
 
 /* =========================
    INFORMATION CARD
@@ -590,8 +548,7 @@ body {
 
   gap: 20px;
 
-  box-shadow:
-    0 6px 18px rgba(0, 90, 75, 0.06);
+  box-shadow: 0 6px 18px rgba(0, 90, 75, 0.06);
 
   transition: all 0.3s ease;
 }
@@ -599,10 +556,8 @@ body {
 .info-card:hover {
   transform: translateY(-4px);
 
-  box-shadow:
-    0 12px 25px rgba(0, 90, 75, 0.12);
+  box-shadow: 0 12px 25px rgba(0, 90, 75, 0.12);
 }
-
 
 /* =========================
    ICON
@@ -630,7 +585,6 @@ body {
   font-size: 25px;
 }
 
-
 /* =========================
    CARD CONTENT
 ========================= */
@@ -653,13 +607,11 @@ body {
   line-height: 1.4;
 }
 
-
 /* =========================
    RESPONSIVE
 ========================= */
 
 @media (max-width: 1000px) {
-
   .info-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -669,9 +621,7 @@ body {
   }
 }
 
-
 @media (max-width: 700px) {
-
   .faculty-page {
     padding: 10px;
   }
