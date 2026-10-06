@@ -9,6 +9,8 @@ import {
   getAssignmentSubmissionsController,
   gradeSubmissionController,
   getMyAssignmentsController,
+  downloadSubmissionController,
+  downloadAllSubmissionsController,
 } from "../controllers/submission.controller.js";
 
 const router = express.Router();
@@ -36,11 +38,15 @@ router.patch(
   gradeSubmissionController
 );
 
+router.get("/my", authenticate, authorize("STUDENT"), getMyAssignmentsController);
+
 router.get(
-  "/my",
+  "/assignments/:id/download",
   authenticate,
-  authorize("STUDENT"),
-  getMyAssignmentsController
-)
+  authorize("FACULTY"),
+  downloadAllSubmissionsController
+);
+
+router.get("/:id/download", authenticate, authorize("FACULTY"), downloadSubmissionController);
 
 export default router;

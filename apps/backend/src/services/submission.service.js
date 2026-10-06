@@ -1,5 +1,10 @@
 import prisma from "../config/db.js";
-import { saveSubmissionFile, deleteSubmissionFile } from "./storage.service.js";
+import {
+  saveSubmissionFile,
+  deleteSubmissionFile,
+  getSubmissionFile,
+  getAllSubmissionFile,
+} from "./storage.service.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -294,4 +299,69 @@ export async function getMyAssignments(student_id) {
   return {
     assignments: result,
   };
+}
+
+export async function downloadSubmission(submission_id, faculty_id) {
+  const submission = await prisma.submission.findUnique({
+    where: {
+      submission_id,
+    },
+  });
+
+  if (!submission) {
+    throw createError("Submission not found", 404);
+  }
+
+  const assignment = await prisma.assignment.findUnique({
+    where: {
+      assignment_id: submission.assignment_id,
+    },
+  });
+
+  if (!assignment) {
+    throw createError("Assignment not found", 404);
+  }
+
+  if (assignment.faculty_id !== faculty_id) {
+    throw createError("Assignment not found", 404);
+  }
+
+  const file = await getSubmissionFile(submission.file_url);
+
+  return file;
+}
+
+export async function downloadAllSubmissions(assignment_id, faculty_id) {
+  const assignment = await prisma.assignment.findUnique({
+    where: {
+      assignment_id,
+    },
+  });
+
+  if (!assignment) {
+    throw createError("Assignment not found", 404);
+  }
+
+  if (assignment.faculty_id !== faculty_id) {
+    throw createError("Assignment not found", 404);
+  }
+
+  const submissions = await prisma.submission.findMany({
+    where: {
+      assignment_id: assignment.assignment_id,
+    },
+    select: {
+      file_url: true,
+    },
+  });
+
+  if (submissions.length === 0) {
+    throw createError("No submissions found for this assignment", 404);
+  }
+
+  const submissions_path = submissions.map((submission) => submission.file_url);
+
+  const zip = await getAllSubmissionFile(submissions_path);
+
+  return zip;
 }

@@ -2,6 +2,7 @@ import "dotenv/config";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import AdmZip from "adm-zip";
 import prisma from "../src/config/db.js";
 import { hashPassword } from "../src/utils/password.js";
 
@@ -82,6 +83,45 @@ async function uploadRequest(endpoint, filePath, token = null, filename = null) 
   return {
     status: response.status,
     data,
+  };
+}
+
+async function downloadRequest(endpoint, token = null) {
+  const headers = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: "GET",
+    headers,
+    signal: AbortSignal.timeout(60000),
+  });
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  let data = null;
+
+  if (response.status !== 200) {
+    const text = buffer.toString("utf8");
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text.slice(0, 500) };
+      }
+    }
+  }
+
+  return {
+    status: response.status,
+    buffer,
+    data,
+    contentType: response.headers.get("content-type"),
+    contentDisposition: response.headers.get("content-disposition"),
   };
 }
 
@@ -2098,7 +2138,10 @@ async function runTests() {
       myLateUpload.status === 201,
       `My Assignments late upload should return 201 (got ${myLateUpload.status})`
     );
-    assert(myLateUpload.data?.submission?.is_late === true, "Late fixture submission should be late");
+    assert(
+      myLateUpload.data?.submission?.is_late === true,
+      "Late fixture submission should be late"
+    );
 
     const otherSemesterSubjectResponse = await request(
       "POST",
@@ -2204,7 +2247,10 @@ async function runTests() {
 
     assert(myOnTime.submission, "Submitted assignment should include submission object");
     assert(myOnTime.submission.is_late === false, "Submitted assignment is_late should be false");
-    assert(myOnTime.submission.marks == null, "Submitted assignment marks should be null before grading");
+    assert(
+      myOnTime.submission.marks == null,
+      "Submitted assignment marks should be null before grading"
+    );
     assert(myOnTime.status === "Submitted", "Submitted assignment status should be Submitted");
     assert(
       myOnTime.submission.submission_id === replacedSubmission.submission_id,
@@ -2224,13 +2270,11 @@ async function runTests() {
     assert(myLate.status === "Late", "Late assignment status should be Late");
     console.log("Verify Late Assignment: passed");
 
-    const gradedStudentMy = await request(
-      "GET",
-      "/submissions/my",
-      null,
-      gradedStudent.token
+    const gradedStudentMy = await request("GET", "/submissions/my", null, gradedStudent.token);
+    assert(
+      gradedStudentMy.status === 200,
+      "Graded review student My Assignments should return 200"
     );
-    assert(gradedStudentMy.status === 200, "Graded review student My Assignments should return 200");
     const gradedStudentAssignment = findMyAssignment(
       gradedStudentMy.data?.assignments,
       reviewAssignment.assignment_id
@@ -2244,7 +2288,10 @@ async function runTests() {
       gradedStudentAssignment.submission?.feedback === "Solid work",
       "Graded assignment feedback should match seeded feedback"
     );
-    assert(gradedStudentAssignment.status === "Graded", "Graded assignment status should be Graded");
+    assert(
+      gradedStudentAssignment.status === "Graded",
+      "Graded assignment status should be Graded"
+    );
     console.log("Verify Graded Assignment: passed");
 
     assert(
@@ -2270,7 +2317,10 @@ async function runTests() {
     console.log("Verify Department Filtering: passed");
 
     const pendingStudentMy = await request("GET", "/submissions/my", null, pendingStudent.token);
-    assert(pendingStudentMy.status === 200, "Pending review student My Assignments should return 200");
+    assert(
+      pendingStudentMy.status === 200,
+      "Pending review student My Assignments should return 200"
+    );
     const pendingStudentAssignment = findMyAssignment(
       pendingStudentMy.data?.assignments,
       reviewAssignment.assignment_id
@@ -2280,7 +2330,10 @@ async function runTests() {
       pendingStudentAssignment.submission === null,
       "Pending student must not receive another student's submission object"
     );
-    assert(pendingStudentAssignment.status === "Pending", "Pending student status should remain Pending");
+    assert(
+      pendingStudentAssignment.status === "Pending",
+      "Pending student status should remain Pending"
+    );
 
     const submittedStudentMy = await request(
       "GET",
@@ -2296,7 +2349,10 @@ async function runTests() {
       submittedStudentMy.data?.assignments,
       reviewAssignment.assignment_id
     );
-    assert(submittedStudentAssignment?.submission, "Submitted student should see their own submission");
+    assert(
+      submittedStudentAssignment?.submission,
+      "Submitted student should see their own submission"
+    );
     assert(
       submittedStudentAssignment.submission.submission_id === gradeTargetSubmissionId,
       "My Assignments must return only the logged-in student's submission_id"
@@ -2370,7 +2426,10 @@ async function runTests() {
       myAfterGrade.data?.assignments,
       onTimeAssignment.assignment_id
     );
-    assert(myAfterReplace, "Replaced assignment should still appear after later My Assignments calls");
+    assert(
+      myAfterReplace,
+      "Replaced assignment should still appear after later My Assignments calls"
+    );
     assert(
       myAfterReplace.submission?.submission_id === replacedSubmission.submission_id,
       "Replacement integration should keep returning the latest submission_id"
@@ -2414,12 +2473,393 @@ async function runTests() {
 
     const emptyMy = await request("GET", "/submissions/my", null, emptyStudentToken);
     assert(emptyMy.status === 200, "Student with no relevant assignments should still return 200");
-    assert(Array.isArray(emptyMy.data?.assignments), "Empty-result response should include assignments array");
+    assert(
+      Array.isArray(emptyMy.data?.assignments),
+      "Empty-result response should include assignments array"
+    );
     assert(
       emptyMy.data.assignments.length === 0,
       "Student with no relevant assignments should receive an empty assignments array"
     );
     console.log("Verify Empty Result: passed");
+
+    // --------------------------------------------------
+    // Faculty Download Submission: GET /submissions/:id/download
+    // --------------------------------------------------
+
+    const downloadPdfSubmissionId = lateAllowResponse.data.submission.submission_id;
+    assert(
+      downloadPdfSubmissionId,
+      "Late-allowed PDF submission should provide a submission_id for download tests"
+    );
+    const originalPdfBuffer = await fs.readFile(pdfPath);
+    const replacementDocxBuffer = await fs.readFile(docxPath);
+    assert(Buffer.isBuffer(originalPdfBuffer), "Original PDF fixture must be a Buffer");
+    assert(Buffer.isBuffer(replacementDocxBuffer), "Replacement DOCX fixture must be a Buffer");
+    assert(originalPdfBuffer.length > 0, "Original PDF fixture must not be empty");
+    assert(replacementDocxBuffer.length > 0, "Replacement DOCX fixture must not be empty");
+    assert(
+      Buffer.compare(originalPdfBuffer, replacementDocxBuffer) !== 0,
+      "PDF and replacement fixtures must differ for replacement download verification"
+    );
+
+    const downloadNoAuth = await downloadRequest(
+      `/submissions/${downloadPdfSubmissionId}/download`
+    );
+    console.log("Download No Authorization:", downloadNoAuth.status);
+    assert(downloadNoAuth.status === 401, "Download without Authorization should return 401");
+
+    const downloadStudentForbidden = await downloadRequest(
+      `/submissions/${downloadPdfSubmissionId}/download`,
+      studentToken
+    );
+    console.log("Download Student Forbidden:", downloadStudentForbidden.status);
+    assert(downloadStudentForbidden.status === 403, "STUDENT download access should return 403");
+
+    const downloadUnrelatedFaculty = await downloadRequest(
+      `/submissions/${downloadPdfSubmissionId}/download`,
+      facultyBToken
+    );
+    console.log("Download Unrelated Faculty:", downloadUnrelatedFaculty.status);
+    assert(
+      downloadUnrelatedFaculty.status === 404,
+      "Non-owner FACULTY download access should return 404"
+    );
+
+    const downloadInvalidAbc = await downloadRequest("/submissions/abc/download", facultyToken);
+    console.log("Download Invalid Submission ID abc:", downloadInvalidAbc.status);
+    assert(
+      downloadInvalidAbc.status === 400,
+      "Invalid submission ID /abc/download should return 400"
+    );
+
+    const downloadInvalidZero = await downloadRequest("/submissions/0/download", facultyToken);
+    console.log("Download Invalid Submission ID 0:", downloadInvalidZero.status);
+    assert(
+      downloadInvalidZero.status === 400,
+      "Invalid submission ID /0/download should return 400"
+    );
+
+    const downloadInvalidNegative = await downloadRequest("/submissions/-1/download", facultyToken);
+    console.log("Download Invalid Submission ID -1:", downloadInvalidNegative.status);
+    assert(
+      downloadInvalidNegative.status === 400,
+      "Invalid submission ID /-1/download should return 400"
+    );
+
+    const downloadNonexistent = await downloadRequest(
+      "/submissions/99999999/download",
+      facultyToken
+    );
+    console.log("Download Nonexistent Submission:", downloadNonexistent.status);
+    assert(downloadNonexistent.status === 404, "Nonexistent submission download should return 404");
+
+    const downloadValid = await downloadRequest(
+      `/submissions/${downloadPdfSubmissionId}/download`,
+      facultyToken
+    );
+    console.log("Download Valid Submission:", downloadValid.status);
+    assert(downloadValid.status === 200, "Owning FACULTY download should return 200");
+    assert(
+      Buffer.isBuffer(downloadValid.buffer),
+      "Download helper must preserve the response body as a Buffer"
+    );
+    assert(
+      downloadValid.buffer.length > 0,
+      "Valid download response body must contain binary file bytes"
+    );
+    assert(
+      Buffer.compare(downloadValid.buffer, originalPdfBuffer) === 0,
+      "Downloaded file bytes must exactly match the original uploaded PDF buffer"
+    );
+    console.log("Verify Downloaded File Contents: passed");
+
+    const downloadReplaced = await downloadRequest(
+      `/submissions/${replacedSubmission.submission_id}/download`,
+      facultyToken
+    );
+    assert(
+      downloadReplaced.status === 200,
+      `Replacement download should return 200 (got ${downloadReplaced.status})`
+    );
+    assert(
+      Buffer.isBuffer(downloadReplaced.buffer),
+      "Replacement download helper must preserve binary Buffer data"
+    );
+    assert(
+      Buffer.compare(downloadReplaced.buffer, replacementDocxBuffer) === 0,
+      "Downloaded replacement bytes must exactly match the replacement upload buffer"
+    );
+    assert(
+      Buffer.compare(downloadReplaced.buffer, originalPdfBuffer) !== 0,
+      "Downloaded replacement bytes must not match the original PDF buffer"
+    );
+    console.log("Verify Replacement Download: passed");
+
+    // --------------------------------------------------
+    // Faculty Download All Submissions:
+    // GET /submissions/assignments/:id/download
+    // --------------------------------------------------
+
+    const downloadAllAssignmentId = allowLateAssignment.assignment_id;
+    assert(
+      downloadAllAssignmentId,
+      "Allow-late assignment should provide an assignment_id for download-all tests"
+    );
+
+    const downloadAllNoAuth = await downloadRequest(
+      `/submissions/assignments/${downloadAllAssignmentId}/download`
+    );
+    console.log("Download All No Authorization:", downloadAllNoAuth.status);
+    assert(
+      downloadAllNoAuth.status === 401,
+      "Download All without Authorization should return 401"
+    );
+
+    const downloadAllStudentForbidden = await downloadRequest(
+      `/submissions/assignments/${downloadAllAssignmentId}/download`,
+      studentToken
+    );
+    console.log("Download All Student Forbidden:", downloadAllStudentForbidden.status);
+    assert(
+      downloadAllStudentForbidden.status === 403,
+      "STUDENT Download All access should return 403"
+    );
+
+    const downloadAllInvalidAbc = await downloadRequest(
+      "/submissions/assignments/abc/download",
+      facultyToken
+    );
+    console.log("Download All Invalid Assignment ID abc:", downloadAllInvalidAbc.status);
+    assert(downloadAllInvalidAbc.status === 400, "Download All /abc should return 400");
+    assert(
+      downloadAllInvalidAbc.data?.message === "Invalid assignment ID",
+      'Download All /abc message should be "Invalid assignment ID"'
+    );
+
+    const downloadAllInvalidZero = await downloadRequest(
+      "/submissions/assignments/0/download",
+      facultyToken
+    );
+    console.log("Download All Invalid Assignment ID 0:", downloadAllInvalidZero.status);
+    assert(downloadAllInvalidZero.status === 400, "Download All /0 should return 400");
+    assert(
+      downloadAllInvalidZero.data?.message === "Invalid assignment ID",
+      'Download All /0 message should be "Invalid assignment ID"'
+    );
+
+    const downloadAllInvalidNegative = await downloadRequest(
+      "/submissions/assignments/-1/download",
+      facultyToken
+    );
+    console.log("Download All Invalid Assignment ID -1:", downloadAllInvalidNegative.status);
+    assert(downloadAllInvalidNegative.status === 400, "Download All /-1 should return 400");
+    assert(
+      downloadAllInvalidNegative.data?.message === "Invalid assignment ID",
+      'Download All /-1 message should be "Invalid assignment ID"'
+    );
+
+    const downloadAllNonexistent = await downloadRequest(
+      "/submissions/assignments/99999999/download",
+      facultyToken
+    );
+    console.log("Download All Nonexistent Assignment:", downloadAllNonexistent.status);
+    assert(downloadAllNonexistent.status === 404, "Download All nonexistent should return 404");
+    assert(
+      downloadAllNonexistent.data?.message === "Assignment not found",
+      'Download All nonexistent message should be "Assignment not found"'
+    );
+
+    const downloadAllUnrelatedFaculty = await downloadRequest(
+      `/submissions/assignments/${downloadAllAssignmentId}/download`,
+      facultyBToken
+    );
+    console.log("Download All Unrelated Faculty:", downloadAllUnrelatedFaculty.status);
+    assert(
+      downloadAllUnrelatedFaculty.status === 404,
+      "Non-owner FACULTY Download All should return 404"
+    );
+    assert(
+      downloadAllUnrelatedFaculty.data?.message === "Assignment not found",
+      'Non-owner FACULTY Download All message should be "Assignment not found"'
+    );
+
+    const downloadAllNoSubmissions = await downloadRequest(
+      `/submissions/assignments/${myPendingAssignment.assignment_id}/download`,
+      facultyToken
+    );
+    console.log("Download All No Submissions:", downloadAllNoSubmissions.status);
+    assert(
+      downloadAllNoSubmissions.status === 404,
+      "Download All with zero submissions should return 404"
+    );
+    assert(
+      downloadAllNoSubmissions.data?.message === "No submissions found for this assignment",
+      'Zero-submission Download All message should be "No submissions found for this assignment"'
+    );
+
+    const downloadAllValid = await downloadRequest(
+      `/submissions/assignments/${downloadAllAssignmentId}/download`,
+      facultyToken
+    );
+    console.log("Download All Valid:", downloadAllValid.status);
+    assert(downloadAllValid.status === 200, "Owning FACULTY Download All should return 200");
+    assert(
+      typeof downloadAllValid.contentType === "string" &&
+        downloadAllValid.contentType.includes("application/zip"),
+      `Download All Content-Type should be application/zip (got ${downloadAllValid.contentType})`
+    );
+    assert(
+      typeof downloadAllValid.contentDisposition === "string" &&
+        downloadAllValid.contentDisposition.includes(
+          `assignment-${downloadAllAssignmentId}-submissions.zip`
+        ),
+      `Download All Content-Disposition should include assignment-${downloadAllAssignmentId}-submissions.zip`
+    );
+    assert(
+      Buffer.isBuffer(downloadAllValid.buffer) && downloadAllValid.buffer.length > 0,
+      "Download All response body must be a non-empty binary Buffer"
+    );
+
+    const singleAssignmentSubmissionCount = await prisma.submission.count({
+      where: { assignment_id: downloadAllAssignmentId },
+    });
+    assert(
+      singleAssignmentSubmissionCount >= 1,
+      "Allow-late assignment should have at least one submission for Download All"
+    );
+
+    let downloadAllZip = null;
+    let downloadAllZipError = null;
+    try {
+      downloadAllZip = new AdmZip(downloadAllValid.buffer);
+    } catch (error) {
+      downloadAllZipError = error;
+    }
+    assert(
+      downloadAllZipError == null && downloadAllZip,
+      `Download All response must be a valid ZIP archive${
+        downloadAllZipError ? ` (${downloadAllZipError.message})` : ""
+      }`
+    );
+
+    const downloadAllEntries = downloadAllZip.getEntries().filter((entry) => !entry.isDirectory);
+    assert(
+      downloadAllEntries.length === singleAssignmentSubmissionCount,
+      `Download All ZIP should contain ${singleAssignmentSubmissionCount} submitted file(s) (got ${downloadAllEntries.length})`
+    );
+
+    let matchedPdfInZip = false;
+    for (const entry of downloadAllEntries) {
+      const entryData = entry.getData();
+      assert(Buffer.isBuffer(entryData), `ZIP entry ${entry.entryName} should be readable`);
+      assert(entryData.length > 0, `ZIP entry ${entry.entryName} should not be empty`);
+      if (Buffer.compare(entryData, originalPdfBuffer) === 0) {
+        matchedPdfInZip = true;
+      }
+    }
+    assert(
+      matchedPdfInZip,
+      "Download All ZIP must include file bytes matching the original submitted PDF"
+    );
+    console.log("Verify Download All ZIP Contents: passed");
+
+    const downloadAllMultiAssignment = await createAssignmentViaApi({
+      facultyToken,
+      subjectId,
+      title: `E2E Download All Multi ${testId}`,
+      allowLate: false,
+      section: "R",
+    });
+    createdAssignmentIds.push(downloadAllMultiAssignment.assignment_id);
+
+    const multiUploadA = await uploadRequest(
+      `/submissions/assignments/${downloadAllMultiAssignment.assignment_id}`,
+      pdfPath,
+      pendingStudent.token,
+      "download-all-a.pdf"
+    );
+    assert(
+      multiUploadA.status === 201,
+      `Download All multi upload A should return 201 (got ${multiUploadA.status})`
+    );
+
+    const multiUploadB = await uploadRequest(
+      `/submissions/assignments/${downloadAllMultiAssignment.assignment_id}`,
+      docxPath,
+      lateStudent.token,
+      "download-all-b.docx"
+    );
+    assert(
+      multiUploadB.status === 201,
+      `Download All multi upload B should return 201 (got ${multiUploadB.status})`
+    );
+
+    const multiSubmissionCount = await prisma.submission.count({
+      where: { assignment_id: downloadAllMultiAssignment.assignment_id },
+    });
+    assert(
+      multiSubmissionCount === 2,
+      `Download All multi assignment should have exactly 2 submissions (got ${multiSubmissionCount})`
+    );
+
+    const downloadAllMulti = await downloadRequest(
+      `/submissions/assignments/${downloadAllMultiAssignment.assignment_id}/download`,
+      facultyToken
+    );
+    console.log("Download All Multiple Submissions:", downloadAllMulti.status);
+    assert(
+      downloadAllMulti.status === 200,
+      "Download All with multiple submissions should return 200"
+    );
+
+    const multiZip = new AdmZip(downloadAllMulti.buffer);
+    const multiEntries = multiZip.getEntries().filter((entry) => !entry.isDirectory);
+    assert(
+      multiEntries.length === multiSubmissionCount,
+      `Download All multi ZIP should include all ${multiSubmissionCount} submitted files`
+    );
+
+    const multiEntryBuffers = multiEntries.map((entry) => entry.getData());
+    assert(
+      multiEntryBuffers.some((buf) => Buffer.compare(buf, originalPdfBuffer) === 0),
+      "Multi Download All ZIP should include the PDF submission bytes"
+    );
+    assert(
+      multiEntryBuffers.some((buf) => Buffer.compare(buf, replacementDocxBuffer) === 0),
+      "Multi Download All ZIP should include the DOCX submission bytes"
+    );
+    console.log("Verify Download All Multiple Submissions: passed");
+
+    const downloadAllReplaced = await downloadRequest(
+      `/submissions/assignments/${onTimeAssignment.assignment_id}/download`,
+      facultyToken
+    );
+    console.log("Download All Replacement Assignment:", downloadAllReplaced.status);
+    assert(
+      downloadAllReplaced.status === 200,
+      "Download All for replaced submission assignment should return 200"
+    );
+
+    const replacedZip = new AdmZip(downloadAllReplaced.buffer);
+    const replacedEntries = replacedZip.getEntries().filter((entry) => !entry.isDirectory);
+    const replacedAssignmentSubmissionCount = await prisma.submission.count({
+      where: { assignment_id: onTimeAssignment.assignment_id },
+    });
+    assert(
+      replacedEntries.length === replacedAssignmentSubmissionCount,
+      "Download All replacement ZIP entry count should match DB submission count"
+    );
+    assert(
+      replacedEntries.some((entry) => Buffer.compare(entry.getData(), replacementDocxBuffer) === 0),
+      "Download All replacement ZIP must contain the replacement file bytes"
+    );
+    assert(
+      replacedEntries.every((entry) => Buffer.compare(entry.getData(), originalPdfBuffer) !== 0),
+      "Download All replacement ZIP must not contain the old original PDF bytes"
+    );
+    console.log("Verify Download All Replacement: passed");
+    console.log("Verify Download All File Content Integrity: passed");
 
     // --------------------------------------------------
     // Failed operations leave consistent storage/DB state
