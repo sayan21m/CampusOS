@@ -3,6 +3,7 @@ import {
   createAssignment,
   getAssignmentById,
   updateAssignmentById,
+  getMyAssignments,
 } from "../services/assignment.service.js";
 
 export async function createAssignmentController(req, res) {
@@ -78,6 +79,31 @@ export async function updateAssignmentByIdController(req, res) {
       message: "Assignment updated successfully",
       updatedAssignment,
     });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+export async function getMyAssignmentsController(req, res) {
+  try {
+    const user_id = req.user.userId;
+    const faculty = await prisma.faculty.findUnique({
+      where: {
+        user_id,
+      },
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty profile not found",
+      });
+    }
+
+    const assignments = await getMyAssignments(faculty.faculty_id);
+
+    return res.status(200).json({ assignments });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Internal server error",

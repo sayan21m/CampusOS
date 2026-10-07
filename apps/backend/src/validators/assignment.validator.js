@@ -18,7 +18,8 @@ export const createAssignmentSchema = z.object({
     .string()
     .trim()
     .min(1, "Section cannot be empty")
-    .max(20, "Section must not exceed 20 characters"),
+    .max(20, "Section must not exceed 20 characters")
+    .transform((value) => value.toUpperCase()),
 
   deadline: z.coerce.date().refine((date) => date > new Date(), "Deadline must be in the future"),
 
@@ -59,3 +60,14 @@ export const updateAssignmentSchema = z
     attachment_url: z.string().trim().url("Attachment URL must be a valid URL").optional(),
   })
   .refine((data) => Object.keys(data).length > 0, "At least one field must be provided for update");
+
+export const gradeSubmissionSchema = z.object({
+  marks: z.coerce.number().int("Marks must be an integer").nonnegative("Marks cannot be negative"),
+
+  feedback: z
+    .string()
+    .trim()
+    .min(1, "Feedback cannot be empty")
+    .max(500, "Feedback must not exceed 500 characters")
+    .optional(),
+});

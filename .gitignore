@@ -52,6 +52,9 @@ uploads/
 .jest/
 *.lcov
 
+# Local test seed output (users.json + copied docs)
+apps/backend/tests/local-data/
+
 # AI agent synced skills (local tooling, not app source)
 .agents/
 .claude/

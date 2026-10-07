@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import AdmZip from "adm-zip";
 
 const STORAGE_ROOT = path.resolve("apps/backend/storage");
 
@@ -62,4 +63,53 @@ export async function deleteSubmissionFile(relativePath) {
 
     throw error;
   }
+}
+
+export async function getSubmissionFile(relativePath) {
+  if (!relativePath) {
+    throw new Error("Invalid submission file path");
+  }
+
+  const absolutePath = path.resolve(STORAGE_ROOT, relativePath);
+  const submissionsRoot = path.resolve(SUBMISSIONS_DIR);
+
+  if (
+    absolutePath !== submissionsRoot &&
+    !absolutePath.startsWith(`${submissionsRoot}${path.sep}`)
+  ) {
+    throw new Error("Invalid submission file path");
+  }
+
+  const file = await fs.readFile(absolutePath);
+
+  return file;
+}
+
+export async function getAllSubmissionFile(relativePathArr) {
+  if (!Array.isArray(relativePathArr) || relativePathArr.length === 0) {
+    throw new Error("No submission files found");
+  }
+
+  const zip = new AdmZip();
+
+  const submissionsRoot = path.resolve(SUBMISSIONS_DIR);
+
+  relativePathArr.forEach((relativePath) => {
+    if (!relativePath) {
+      throw new Error("Invalid submission file path");
+    }
+
+    const absolutePath = path.resolve(STORAGE_ROOT, relativePath);
+
+    if (
+      absolutePath !== submissionsRoot &&
+      !absolutePath.startsWith(`${submissionsRoot}${path.sep}`)
+    ) {
+      throw new Error("Invalid submission file path");
+    }
+
+    zip.addLocalFile(absolutePath);
+  });
+
+  return zip.toBuffer();
 }

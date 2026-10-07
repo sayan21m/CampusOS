@@ -7,6 +7,7 @@ import {
   createAssignmentController,
   getAssignmentByIdController,
   updateAssignmentByIdController,
+  getMyAssignmentsController,
 } from "../controllers/assignment.controller.js";
 import {
   createAssignmentSchema,
@@ -22,6 +23,8 @@ router.post(
   validate(createAssignmentSchema),
   createAssignmentController
 );
+
+router.get("/my", authenticate, authorize("FACULTY"), getMyAssignmentsController);
 
 router.get("/:id", authenticate, getAssignmentByIdController);
 
