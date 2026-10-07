@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/forgotpass";
 import ResetPassword from "./pages/ResetPassword";
+import FacultyProfile from "./pages/faculty_profile";
 import StudentProfile from "./pages/student_prof";
 import StudentDashboard from "./pages/StudentDashboard";
 
@@ -18,30 +19,49 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function RoleDashboard() {
+  const { user } = useAuth();
+
+  if (user?.role === "STUDENT") {
+    return <StudentDashboard />;
+  }
+
+  return <Dashboard />;
+}
+
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<StudentDashboard />} />
-      <Route path="/register" context-note="" element={<Register />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <RoleDashboard />
           </ProtectedRoute>
         }
       />
-      {/* Secured behind ProtectedRoute */}
       <Route
-        path="/student_prof"
+        path="/student-profile"
         element={
           <ProtectedRoute>
             <StudentProfile />
           </ProtectedRoute>
         }
       />
+      <Route path="/student_prof" element={<Navigate to="/student-profile" replace />} />
+      <Route
+        path="/faculty-profile"
+        element={
+          <ProtectedRoute>
+            <FacultyProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/faculty_profile" element={<Navigate to="/faculty-profile" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
