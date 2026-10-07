@@ -58,6 +58,7 @@ export async function createSubmission(assignment_id, student_id, file) {
           file_url: storedFile.path,
           submitted_at: now,
           is_late: isLate,
+          status: "Unchecked",
         },
       });
 
@@ -92,6 +93,7 @@ export async function createSubmission(assignment_id, student_id, file) {
         marks: null,
         feedback: null,
         graded_at: null,
+        status: "Unchecked",
       },
     });
 
@@ -122,11 +124,16 @@ export async function getAssignmentSubmissions(assignment_id, faculty_id) {
     throw createError("Assignment not found", 404);
   }
 
+  let section = undefined;
+  if (facultyAssignment.section !== "ALL") {
+    section = facultyAssignment.section;
+  }
+
   const students = await prisma.student.findMany({
     where: {
       dept_id: facultyAssignment.subject.dept_id,
       semester: facultyAssignment.subject.semester,
-      section: facultyAssignment.section,
+      section: section,
     },
     select: {
       student_id: true,
@@ -226,6 +233,7 @@ export async function gradeSubmission(submission_id, faculty_id, marks, feedback
       marks,
       feedback,
       graded_at: new Date(),
+      status: "Checked",
     },
   });
 
@@ -245,11 +253,18 @@ export async function getMyAssignments(student_id) {
 
   const assignments = await prisma.assignment.findMany({
     where: {
-      section: student.section,
       subject: {
         dept_id: student.dept_id,
         semester: student.semester,
       },
+      OR: [
+        {
+          section: student.section,
+        },
+        {
+          section: "ALL",
+        },
+      ],
     },
   });
 
@@ -264,6 +279,7 @@ export async function getMyAssignments(student_id) {
       is_late: true,
       marks: true,
       feedback: true,
+      status: true,
     },
   });
 
@@ -273,15 +289,43 @@ export async function getMyAssignments(student_id) {
     );
 
     let status;
+    let submissionResponse = null;
 
     if (!submission) {
       status = "Pending";
-    } else if (submission.marks !== null) {
+    } else if (submission.status === "Unchecked") {
+      status = submission.is_late ? "Late" : "Submitted";
+
+      submissionResponse = {
+        submission_id: submission.submission_id,
+        submitted_at: submission.submitted_at,
+        is_late: submission.is_late,
+        marks: null,
+        feedback: null,
+        status,
+      };
+    } else if (submission.status === "Checked") {
+      status = "Checked";
+
+      submissionResponse = {
+        submission_id: submission.submission_id,
+        submitted_at: submission.submitted_at,
+        is_late: submission.is_late,
+        marks: null,
+        feedback: null,
+        status: "Checked",
+      };
+    } else if (submission.status === "Released") {
       status = "Graded";
-    } else if (submission.is_late) {
-      status = "Late";
-    } else {
-      status = "Submitted";
+
+      submissionResponse = {
+        submission_id: submission.submission_id,
+        submitted_at: submission.submitted_at,
+        is_late: submission.is_late,
+        marks: submission.marks,
+        feedback: submission.feedback,
+        status: "Graded",
+      };
     }
 
     return {
@@ -291,8 +335,8 @@ export async function getMyAssignments(student_id) {
       section: assignment.section,
       deadline: assignment.deadline,
       max_marks: assignment.max_marks,
-      submission: submission ?? null,
-      status: status,
+      submission: submissionResponse,
+      status,
     };
   });
 

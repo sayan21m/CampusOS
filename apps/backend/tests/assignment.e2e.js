@@ -53,6 +53,10 @@ function subjectCodeFor(testId, suffix = "") {
   return `AS${String(testId).slice(-8)}${suffix}`.slice(0, 15);
 }
 
+function rollNumberFor(testId, suffix = "") {
+  return `R${String(testId).slice(-8)}${suffix}`.slice(0, 15);
+}
+
 function futureDeadline(daysAhead = 7) {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + daysAhead);
@@ -171,6 +175,10 @@ async function cleanupTestData({
   }
 
   if (departmentId) {
+    await prisma.student.deleteMany({
+      where: { dept_id: departmentId },
+    });
+
     await prisma.department.deleteMany({
       where: { dept_id: departmentId },
     });
@@ -195,6 +203,7 @@ async function runTests() {
   const facultyEmail2 = `e2e.assignment.faculty2.${testId}@campusos.test`;
   const facultyNoProfileEmail = `e2e.assignment.faculty.noprofile.${testId}@campusos.test`;
   const studentEmail = `e2e.assignment.student.${testId}@campusos.test`;
+  const student2Email = `e2e.assignment.student2.${testId}@campusos.test`;
   const departmentName = `E2E Assignment Department ${testId}`;
   const departmentCode = deptCodeFor(testId);
   const subjectCode = subjectCodeFor(testId);
@@ -318,6 +327,31 @@ async function runTests() {
       allow_late: false,
       attachment_url: "https://example.com/assignments/e2e-brief.pdf",
     };
+
+    // --------------------------------------------------
+    // ALL sections: reject when no students/sections exist
+    // --------------------------------------------------
+
+    const allNoStudentsResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E ALL No Students ${testId}`,
+        section: "ALL",
+      },
+      facultyToken
+    );
+
+    console.log("Create ALL Assignment (no students):", allNoStudentsResponse.status);
+    assert(
+      allNoStudentsResponse.status === 404,
+      "ALL assignment with no students/sections should return 404"
+    );
+    assert(
+      allNoStudentsResponse.data?.message === "No sections found for this subject",
+      'ALL assignment with no students should return message "No sections found for this subject"'
+    );
 
     // --------------------------------------------------
     // 1. Faculty can create an assignment
@@ -473,6 +507,16 @@ async function runTests() {
           subject_id: subjectId,
           description: "Valid description",
           section: "A",
+          deadline,
+          max_marks: 50,
+        },
+      },
+      {
+        label: "missing section",
+        body: {
+          subject_id: subjectId,
+          title: `Missing Section ${testId}`,
+          description: "Valid description",
           deadline,
           max_marks: 50,
         },
@@ -1125,6 +1169,461 @@ async function runTests() {
 
     console.log("Verify Protected Fields Immutable: passed");
 
+    // --------------------------------------------------
+    // GET /assignments/my — Faculty Assignment List
+    // --------------------------------------------------
+
+    const studentProfileResponse = await request(
+      "POST",
+      "/students",
+      {
+        userId: registerResponse.data.user.user_id,
+        roll_number: rollNumberFor(testId),
+        full_name: "E2E Assignment Student",
+        dept_id: departmentId,
+        semester: 5,
+        section: "A",
+        admission_year: 2024,
+        phone: "9876543210",
+      },
+      adminToken
+    );
+
+    console.log("Create Student Profile (my list):", studentProfileResponse.status);
+    assert(
+      studentProfileResponse.status === 201,
+      "Student profile creation for my-list fixtures should return 201"
+    );
+
+    const studentId = studentProfileResponse.data.student.studentId;
+    assert(studentId, "Student profile should contain studentId");
+
+    const student2RegisterResponse = await request("POST", "/auth/register", {
+      name: "E2E Assignment Student 2",
+      email: student2Email,
+      password: studentPassword,
+    });
+
+    assert(
+      student2RegisterResponse.status === 201,
+      "Second student registration should return 201"
+    );
+
+    const student2ProfileResponse = await request(
+      "POST",
+      "/students",
+      {
+        userId: student2RegisterResponse.data.user.user_id,
+        roll_number: rollNumberFor(testId, "B"),
+        full_name: "E2E Assignment Student 2",
+        dept_id: departmentId,
+        semester: 5,
+        section: "A",
+        admission_year: 2024,
+        phone: "9876543211",
+      },
+      adminToken
+    );
+
+    console.log("Create Second Student Profile (my list):", student2ProfileResponse.status);
+    assert(
+      student2ProfileResponse.status === 201,
+      "Second student profile creation should return 201"
+    );
+
+    const student2Id = student2ProfileResponse.data.student.studentId;
+    assert(student2Id, "Second student profile should contain studentId");
+
+    await prisma.submission.create({
+      data: {
+        assignment_id: assignment.assignment_id,
+        student_id: studentId,
+        file_url: `submissions/assignment-${assignment.assignment_id}/student-${studentId}/seeded.pdf`,
+        submitted_at: new Date(),
+        is_late: false,
+        marks: 85,
+        feedback: "Good work",
+        graded_at: new Date(),
+      },
+    });
+
+    await prisma.submission.create({
+      data: {
+        assignment_id: assignment.assignment_id,
+        student_id: student2Id,
+        file_url: `submissions/assignment-${assignment.assignment_id}/student-${student2Id}/seeded.pdf`,
+        submitted_at: new Date(),
+        is_late: false,
+        marks: null,
+        feedback: null,
+      },
+    });
+
+    const earlyDeadline = futureDeadline(3);
+    const lateDeadline = futureDeadline(20);
+
+    const earlyAssignmentResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E My List Early ${testId}`,
+        section: "B",
+        deadline: earlyDeadline,
+      },
+      facultyToken
+    );
+
+    console.log("Create Early Deadline Assignment:", earlyAssignmentResponse.status);
+    assert(
+      earlyAssignmentResponse.status === 201,
+      "Early-deadline assignment creation should return 201"
+    );
+
+    const earlyAssignment = earlyAssignmentResponse.data.assignment;
+    createdAssignmentIds.push(earlyAssignment.assignment_id);
+
+    const lateAssignmentResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E My List Late ${testId}`,
+        section: "C",
+        deadline: lateDeadline,
+      },
+      facultyToken
+    );
+
+    console.log("Create Late Deadline Assignment:", lateAssignmentResponse.status);
+    assert(
+      lateAssignmentResponse.status === 201,
+      "Late-deadline assignment creation should return 201"
+    );
+
+    const lateAssignment = lateAssignmentResponse.data.assignment;
+    createdAssignmentIds.push(lateAssignment.assignment_id);
+
+    const myListNoAuth = await request("GET", "/assignments/my");
+    console.log("My Assignments No Authorization:", myListNoAuth.status);
+    assert(myListNoAuth.status === 401, "My Assignments without Authorization should return 401");
+
+    const myListStudentForbidden = await request("GET", "/assignments/my", null, studentToken);
+    console.log("My Assignments Student Forbidden:", myListStudentForbidden.status);
+    assert(
+      myListStudentForbidden.status === 403,
+      "Student My Assignments access should return 403"
+    );
+
+    const myListAdminForbidden = await request("GET", "/assignments/my", null, adminToken);
+    console.log("My Assignments Admin Forbidden:", myListAdminForbidden.status);
+    assert(myListAdminForbidden.status === 403, "Admin My Assignments access should return 403");
+
+    const myListEmpty = await request("GET", "/assignments/my", null, faculty2Token);
+    console.log("My Assignments Empty Result:", myListEmpty.status);
+    assert(myListEmpty.status === 200, "Faculty with no assignments should return 200");
+    assert(
+      Array.isArray(myListEmpty.data?.assignments),
+      "Empty My Assignments response should contain assignments array"
+    );
+    assert(
+      myListEmpty.data.assignments.length === 0,
+      "Faculty with no assignments should receive an empty assignments array"
+    );
+
+    const faculty2AssignmentResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E My List Faculty B ${testId}`,
+        section: "D",
+        deadline: futureDeadline(12),
+      },
+      faculty2Token
+    );
+
+    console.log("Create Faculty B Assignment:", faculty2AssignmentResponse.status);
+    assert(
+      faculty2AssignmentResponse.status === 201,
+      "Faculty B assignment creation should return 201"
+    );
+
+    const faculty2Assignment = faculty2AssignmentResponse.data.assignment;
+    createdAssignmentIds.push(faculty2Assignment.assignment_id);
+
+    const myListFacultyAllowed = await request("GET", "/assignments/my", null, facultyToken);
+    console.log("My Assignments Faculty Allowed:", myListFacultyAllowed.status);
+    assert(myListFacultyAllowed.status === 200, "Faculty My Assignments access should return 200");
+    assert(
+      Array.isArray(myListFacultyAllowed.data?.assignments),
+      'My Assignments response should contain "assignments" array'
+    );
+
+    const myAssignments = myListFacultyAllowed.data.assignments;
+    assert(myAssignments.length >= 3, "Faculty A should receive at least their own assignments");
+
+    for (const item of myAssignments) {
+      assert(item.assignment_id != null, "Each assignment should include assignment_id");
+      assert(
+        typeof item.title === "string" && item.title.length > 0,
+        "Each assignment needs title"
+      );
+      assert(item.subject && typeof item.subject === "object", "Each assignment needs subject");
+      assert(typeof item.section === "string", "Each assignment needs section");
+      assert(item.deadline != null, "Each assignment needs deadline");
+      assert(item.max_marks != null, "Each assignment needs max_marks");
+      assert(typeof item.allow_late === "boolean", "Each assignment needs allow_late");
+      assert(typeof item.submission_count === "number", "Each assignment needs submission_count");
+      assert(typeof item.graded_count === "number", "Each assignment needs graded_count");
+      assert(typeof item.pending_count === "number", "Each assignment needs pending_count");
+
+      assert(item.subject.subject_id != null, "subject should include subject_id");
+      assert(typeof item.subject.subject_code === "string", "subject should include subject_code");
+      assert(typeof item.subject.subject_name === "string", "subject should include subject_name");
+    }
+
+    console.log("Verify My Assignments Response Structure: passed");
+
+    const listedPrimary = myAssignments.find(
+      (item) => item.assignment_id === assignment.assignment_id
+    );
+    assert(listedPrimary, "Faculty A's primary assignment should appear in My Assignments");
+
+    assert(
+      listedPrimary.subject.subject_id === subjectId,
+      "Listed subject_id should match created subject"
+    );
+    assert(
+      listedPrimary.subject.subject_code === subjectCode,
+      "Listed subject_code should match created subject"
+    );
+    assert(
+      listedPrimary.subject.subject_name === "E2E Assignment Subject",
+      "Listed subject_name should match created subject"
+    );
+
+    console.log("Verify My Assignments Subject Information: passed");
+
+    const dbSubmissions = await prisma.submission.findMany({
+      where: { assignment_id: assignment.assignment_id },
+      select: { submission_id: true, marks: true },
+    });
+
+    const expectedSubmissionCount = dbSubmissions.length;
+    const expectedGradedCount = dbSubmissions.filter(
+      (submission) => submission.marks !== null
+    ).length;
+    const expectedPendingCount = expectedSubmissionCount - expectedGradedCount;
+
+    assert(
+      listedPrimary.submission_count === expectedSubmissionCount,
+      `submission_count should equal DB total (${expectedSubmissionCount})`
+    );
+    assert(
+      listedPrimary.graded_count === expectedGradedCount,
+      `graded_count should equal graded submissions (${expectedGradedCount})`
+    );
+    assert(
+      listedPrimary.pending_count === expectedPendingCount,
+      `pending_count should equal submission_count - graded_count (${expectedPendingCount})`
+    );
+    assert(
+      listedPrimary.pending_count === listedPrimary.submission_count - listedPrimary.graded_count,
+      "pending_count must equal submission_count - graded_count"
+    );
+
+    console.log("Verify My Assignments Submission Counts: passed");
+
+    assert(
+      myAssignments.every((item) => item.assignment_id !== faculty2Assignment.assignment_id),
+      "Faculty A My Assignments must not include Faculty B's assignment"
+    );
+
+    const myListFacultyB = await request("GET", "/assignments/my", null, faculty2Token);
+    console.log("My Assignments Faculty B Allowed:", myListFacultyB.status);
+    assert(myListFacultyB.status === 200, "Faculty B My Assignments access should return 200");
+
+    const facultyBAssignments = myListFacultyB.data.assignments;
+    assert(
+      Array.isArray(facultyBAssignments),
+      "Faculty B response should contain assignments array"
+    );
+    assert(
+      facultyBAssignments.some((item) => item.assignment_id === faculty2Assignment.assignment_id),
+      "Faculty B should see their own assignment"
+    );
+    assert(
+      facultyBAssignments.every((item) => item.assignment_id !== assignment.assignment_id),
+      "Faculty B My Assignments must not include Faculty A's assignment"
+    );
+
+    console.log("Verify My Assignments Faculty Ownership Isolation: passed");
+
+    for (let index = 1; index < myAssignments.length; index += 1) {
+      const previousDeadline = new Date(myAssignments[index - 1].deadline).getTime();
+      const currentDeadline = new Date(myAssignments[index].deadline).getTime();
+      assert(
+        previousDeadline <= currentDeadline,
+        "My Assignments should be ordered by deadline ascending"
+      );
+    }
+
+    const earlyListedIndex = myAssignments.findIndex(
+      (item) => item.assignment_id === earlyAssignment.assignment_id
+    );
+    const primaryListedIndex = myAssignments.findIndex(
+      (item) => item.assignment_id === assignment.assignment_id
+    );
+    const lateListedIndex = myAssignments.findIndex(
+      (item) => item.assignment_id === lateAssignment.assignment_id
+    );
+
+    assert(earlyListedIndex !== -1, "Early-deadline assignment should be listed");
+    assert(primaryListedIndex !== -1, "Primary assignment should be listed");
+    assert(lateListedIndex !== -1, "Late-deadline assignment should be listed");
+    assert(
+      earlyListedIndex < primaryListedIndex && primaryListedIndex < lateListedIndex,
+      "Assignments should appear in ascending deadline order (early < primary < late)"
+    );
+
+    console.log("Verify My Assignments Ordering: passed");
+
+    const dbPrimary = await prisma.assignment.findUnique({
+      where: { assignment_id: assignment.assignment_id },
+      include: {
+        subject: {
+          select: {
+            subject_id: true,
+            subject_code: true,
+            subject_name: true,
+          },
+        },
+      },
+    });
+
+    assert(dbPrimary, "Primary assignment should still exist in DB");
+    assert(
+      listedPrimary.title === dbPrimary.title,
+      "Listed title should match persisted assignment title"
+    );
+    assert(
+      listedPrimary.section === dbPrimary.section,
+      "Listed section should match persisted assignment section"
+    );
+    assert(
+      new Date(listedPrimary.deadline).toISOString() === dbPrimary.deadline.toISOString(),
+      "Listed deadline should match persisted assignment deadline"
+    );
+    assert(
+      listedPrimary.max_marks === dbPrimary.max_marks,
+      "Listed max_marks should match persisted assignment max_marks"
+    );
+    assert(
+      listedPrimary.allow_late === dbPrimary.allow_late,
+      "Listed allow_late should match persisted assignment allow_late"
+    );
+    assert(
+      listedPrimary.subject.subject_id === dbPrimary.subject.subject_id,
+      "Listed subject_id should match persisted subject"
+    );
+    assert(
+      listedPrimary.subject.subject_code === dbPrimary.subject.subject_code,
+      "Listed subject_code should match persisted subject"
+    );
+    assert(
+      listedPrimary.subject.subject_name === dbPrimary.subject.subject_name,
+      "Listed subject_name should match persisted subject"
+    );
+
+    console.log("Verify My Assignments Database Consistency: passed");
+
+    // --------------------------------------------------
+    // ALL sections: create + normalization (students now exist)
+    // --------------------------------------------------
+
+    const allCreateResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E ALL Sections ${testId}`,
+        section: "ALL",
+        deadline: futureDeadline(14),
+      },
+      facultyToken
+    );
+
+    console.log("Create ALL Assignment:", allCreateResponse.status);
+    assert(allCreateResponse.status === 201, "ALL assignment creation should return 201");
+
+    const allAssignment = allCreateResponse.data.assignment;
+    assert(allAssignment, "ALL assignment response should contain assignment");
+    assert(
+      allAssignment.section === "ALL",
+      'ALL assignment response section must be exactly "ALL"'
+    );
+    createdAssignmentIds.push(allAssignment.assignment_id);
+
+    const allPersisted = await prisma.assignment.findUnique({
+      where: { assignment_id: allAssignment.assignment_id },
+    });
+    assert(allPersisted, "ALL assignment should persist in the database");
+    assert(allPersisted.section === "ALL", 'Persisted ALL assignment section must be "ALL"');
+    console.log("Verify ALL Assignment Create: passed");
+
+    const allLowerResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E ALL Lowercase ${testId}`,
+        section: "all",
+        deadline: futureDeadline(15),
+      },
+      facultyToken
+    );
+
+    console.log("Create ALL Assignment (all):", allLowerResponse.status);
+    assert(allLowerResponse.status === 201, 'section "all" should normalize and return 201');
+    assert(
+      allLowerResponse.data.assignment.section === "ALL",
+      'Normalized "all" response section must be "ALL"'
+    );
+    createdAssignmentIds.push(allLowerResponse.data.assignment.assignment_id);
+
+    const allLowerPersisted = await prisma.assignment.findUnique({
+      where: { assignment_id: allLowerResponse.data.assignment.assignment_id },
+    });
+    assert(allLowerPersisted?.section === "ALL", 'Persisted section for "all" must be "ALL"');
+    console.log("Verify ALL Section Normalization (all): passed");
+
+    const allMixedResponse = await request(
+      "POST",
+      "/assignments",
+      {
+        ...validAssignmentBody,
+        title: `E2E ALL Mixed Case ${testId}`,
+        section: "All",
+        deadline: futureDeadline(16),
+      },
+      facultyToken
+    );
+
+    console.log("Create ALL Assignment (All):", allMixedResponse.status);
+    assert(allMixedResponse.status === 201, 'section "All" should normalize and return 201');
+    assert(
+      allMixedResponse.data.assignment.section === "ALL",
+      'Normalized "All" response section must be "ALL"'
+    );
+    createdAssignmentIds.push(allMixedResponse.data.assignment.assignment_id);
+
+    const allMixedPersisted = await prisma.assignment.findUnique({
+      where: { assignment_id: allMixedResponse.data.assignment.assignment_id },
+    });
+    assert(allMixedPersisted?.section === "ALL", 'Persisted section for "All" must be "ALL"');
+    console.log("Verify ALL Section Normalization (All): passed");
+
     console.log("\n✓ All Assignment API tests passed\n");
   } finally {
     await cleanupTestData({
@@ -1137,6 +1636,7 @@ async function runTests() {
         facultyEmail2,
         facultyNoProfileEmail,
         studentEmail,
+        student2Email,
         ephemeralAdminEmail,
       ],
     });

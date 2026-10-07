@@ -38,6 +38,21 @@ export async function createAssignment(assignment_data, faculty_id) {
     throw createError("Faculty profile not found", 404);
   }
 
+  const sections = await prisma.student.findMany({
+    where: {
+      dept_id: subject.dept_id,
+      semester: subject.semester,
+    },
+    select: {
+      section: true,
+    },
+    distinct: ["section"],
+  });
+
+  if (section === "ALL" && sections.length === 0) {
+    throw createError("No sections found for this subject", 404);
+  }
+
   const existingAssignment = await prisma.assignment.findFirst({
     where: {
       subject_id,
@@ -169,4 +184,51 @@ export async function updateAssignmentById(assignment_id, assignment_data, facul
     attachment_url: updatedAssignment.attachment_url,
     created_at: updatedAssignment.created_at,
   };
+}
+
+export async function getMyAssignments(faculty_id) {
+  const assignments = await prisma.assignment.findMany({
+    where: {
+      faculty_id,
+    },
+    include: {
+      subject: {
+        select: {
+          subject_id: true,
+          subject_code: true,
+          subject_name: true,
+        },
+      },
+      submissions: {
+        select: {
+          submission_id: true,
+          marks: true,
+        },
+      },
+    },
+    orderBy: {
+      deadline: "asc",
+    },
+  });
+
+  return assignments.map((assignment) => {
+    const submissionCount = assignment.submissions.length;
+
+    const gradedCount = assignment.submissions.filter(
+      (submission) => submission.marks !== null
+    ).length;
+
+    return {
+      assignment_id: assignment.assignment_id,
+      title: assignment.title,
+      subject: assignment.subject,
+      section: assignment.section,
+      deadline: assignment.deadline,
+      max_marks: assignment.max_marks,
+      allow_late: assignment.allow_late,
+      submission_count: submissionCount,
+      graded_count: gradedCount,
+      pending_count: submissionCount - gradedCount,
+    };
+  });
 }

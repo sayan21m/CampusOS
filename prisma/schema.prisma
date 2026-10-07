@@ -133,6 +133,7 @@ model Submission {
   marks         Int?
   feedback      String?
   graded_at     DateTime?
+  status        String    @default("Unchecked")
 
   assignment Assignment @relation(fields: [assignment_id], references: [assignment_id], onDelete: Cascade)
   student    Student    @relation(fields: [student_id], references: [student_id], onDelete: Cascade)

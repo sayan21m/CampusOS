@@ -18,7 +18,8 @@ export const createAssignmentSchema = z.object({
     .string()
     .trim()
     .min(1, "Section cannot be empty")
-    .max(20, "Section must not exceed 20 characters"),
+    .max(20, "Section must not exceed 20 characters")
+    .transform((value) => value.toUpperCase()),
 
   deadline: z.coerce.date().refine((date) => date > new Date(), "Deadline must be in the future"),
 
