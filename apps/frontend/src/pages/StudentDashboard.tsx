@@ -1,7 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  ClipboardList,
+  Clock3,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  Megaphone,
+  Percent,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import "./Login.css";
+import api from "../services/api";
+import "./StudentDashboard.css";
 
 interface ClassSchedule {
   time: string;
@@ -18,12 +35,82 @@ interface Notice {
   urgent: boolean;
 }
 
+interface StudentAssignment {
+  assignment_id: number;
+  title: string;
+  subject_id: number;
+  section: string;
+  deadline: string;
+  max_marks: number;
+  status: string;
+  submission: unknown;
+}
+
+type DeadlineTone = "comfortable" | "soon" | "urgent";
+
+function getDeadlineTone(deadline: string | Date): DeadlineTone {
+  const hoursLeft = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60);
+
+  if (hoursLeft <= 24) {
+    return "urgent";
+  }
+
+  if (hoursLeft <= 48) {
+    return "soon";
+  }
+
+  return "comfortable";
+}
+
+function formatDeadline(deadline: string | Date): string {
+  const date = new Date(deadline);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Deadline unavailable";
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getDeadlinePill(tone: DeadlineTone): { className: string; label: string } {
+  if (tone === "urgent") {
+    return { className: "sd-pill sd-pill-urgent", label: "Due within 24h" };
+  }
+
+  if (tone === "soon") {
+    return { className: "sd-pill sd-pill-soon", label: "Due soon" };
+  }
+
+  return { className: "sd-pill sd-pill-ok", label: "On track" };
+}
+
+function getClassStatusPill(status: string): string {
+  if (status === "Completed") {
+    return "sd-pill sd-pill-ok";
+  }
+
+  if (status === "Ongoing") {
+    return "sd-pill sd-pill-info";
+  }
+
+  return "sd-pill sd-pill-neutral";
+}
+
 export default function StudentDashboard(): React.JSX.Element {
-  const { user, logout } = useAuth() as { user: any; logout: () => void };
+  const { user, logout } = useAuth() as {
+    user: { name?: string; role?: string } | null;
+    logout: () => void;
+  };
   const navigate = useNavigate();
 
   const [todaysClasses, setTodaysClasses] = useState<ClassSchedule[]>([]);
   const [recentNotices, setRecentNotices] = useState<Notice[]>([]);
+  const [pendingAssignments, setPendingAssignments] = useState<StudentAssignment[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -33,196 +120,311 @@ export default function StudentDashboard(): React.JSX.Element {
   }
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchDashboardData() {
       try {
         setLoadingData(true);
-        
-        // TODO: Replace these fetch calls with your actual backend API endpoints once live
-        // const scheduleRes = await fetch('/api/student/timetable/today', { headers: { Authorization: `Bearer ${user?.token}` } });
-        // const noticesRes = await fetch('/api/student/notices', { headers: { Authorization: `Bearer ${user?.token}` } });
-        
-        // Simulating backend response connection check
+        setError("");
+
         const scheduleData: ClassSchedule[] = [];
         const noticesData: Notice[] = [];
 
-        setTodaysClasses(scheduleData);
-        setRecentNotices(noticesData);
-        setError("");
-      } catch (err) {
-        setError("Failed to synchronize live dashboard data from server.");
+        const assignmentsResponse = await api.get("/submissions/my");
+        const assignments = Array.isArray(assignmentsResponse.data?.assignments)
+          ? (assignmentsResponse.data.assignments as StudentAssignment[])
+          : [];
+
+        const pending = assignments
+          .filter((assignment) => assignment.status === "Pending")
+          .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+
+        if (!cancelled) {
+          setTodaysClasses(scheduleData);
+          setRecentNotices(noticesData);
+          setPendingAssignments(pending);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            "Failed to load dashboard data.";
+          setError(message);
+          setPendingAssignments([]);
+        }
       } finally {
-        setLoadingData(false);
+        if (!cancelled) {
+          setLoadingData(false);
+        }
       }
     }
 
     fetchDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #06241e 0%, #09382e 50%, #0f6b57 100%)", padding: "40px 20px", fontFamily: "inherit" }}>
-      <main style={{ maxWidth: "960px", margin: "0 auto", width: "100%" }}>
-        
-        <div style={{ background: "rgba(255, 255, 255, 0.96)", backdropFilter: "blur(20px)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(4, 28, 22, 0.4)", overflow: "hidden", border: "1px solid rgba(255, 255, 255, 0.4)" }}>
-          
-          <div style={{ background: "linear-gradient(135deg, #09382e 0%, #0f6b57 100%)", padding: "40px", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "20px", position: "relative" }}>
-            
-            <div style={{ position: "absolute", top: "-50px", right: "-50px", width: "200px", height: "200px", background: "radial-gradient(circle, rgba(46, 204, 113, 0.25) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-
+    <div className="sd-page">
+      <div className="sd-shell">
+        <header className="sd-topbar">
+          <div className="sd-brand">
+            <span className="sd-brand-mark" aria-hidden="true">
+              <GraduationCap size={18} strokeWidth={2} />
+            </span>
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255, 255, 255, 0.18)", padding: "5px 12px", borderRadius: "30px", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.06em", marginBottom: "8px", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                <span>🟢</span> STUDENT DASHBOARD
-              </div>
-              <h1 style={{ margin: 0, fontSize: "2.2rem", fontWeight: 800, letterSpacing: "-0.03em" }}>
-                Welcome back, {user?.name || "Scholar"}!
-              </h1>
-              <p style={{ margin: "4px 0 0", color: "#b6ded3", fontSize: "0.95rem" }}>
-                Manage your academic ecosystem, timetable, and campus notices.
-              </p>
+              <p className="sd-brand-name">CampusOS</p>
+              <p className="sd-brand-title">Student Portal</p>
             </div>
-
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link 
-                to="/student_prof" 
-                style={{ background: "rgba(255, 255, 255, 0.15)", border: "1px solid rgba(255, 255, 255, 0.3)", color: "#ffffff", padding: "10px 18px", borderRadius: "12px", fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", backdropFilter: "blur(4px)", transition: "background 0.2s" }}
-              >
-                👤 View Profile
-              </Link>
-              <button 
-                onClick={handleLogout}
-                style={{ background: "#9f2d22", border: 0, color: "#ffffff", padding: "10px 18px", borderRadius: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 12px rgba(159, 45, 34, 0.3)" }}
-              >
-                Sign Out
-              </button>
-            </div>
-
           </div>
+          <div className="sd-top-actions">
+            <Link to="/student-profile" className="sd-btn sd-btn-ghost">
+              <UserRound size={16} strokeWidth={2} aria-hidden="true" />
+              <span>Profile</span>
+            </Link>
+            <button type="button" className="sd-btn sd-btn-danger" onClick={handleLogout}>
+              <LogOut size={16} strokeWidth={2} aria-hidden="true" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </header>
 
-          {/* Core Dashboard Body */}
-          <div style={{ padding: "40px" }}>
-            
+        <main className="sd-panel">
+          <section className="sd-hero">
+            <div className="sd-hero-icon" aria-hidden="true">
+              <LayoutDashboard size={22} strokeWidth={2} />
+            </div>
+            <div className="sd-hero-copy">
+              <p className="sd-hero-kicker">Student dashboard</p>
+              <h1>Welcome back, {user?.name || "Student"}</h1>
+              <p>Your timetable, assignments, notices, and attendance in one place.</p>
+            </div>
+          </section>
+
+          <div className="sd-body">
             {error && (
-              <div style={{ marginBottom: "24px", padding: "14px 18px", background: "#fff1f0", color: "#9f2d22", borderRadius: "12px", fontSize: "0.9rem", fontWeight: 600 }}>
-                ⚠️ {error}
+              <div className="sd-alert" role="alert">
+                <AlertCircle size={18} strokeWidth={2} aria-hidden="true" />
+                <span>{error}</span>
               </div>
             )}
 
-            {/* Today's Timetable Section */}
-            <div style={{ marginBottom: "36px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
-                  📅 Today's Timetable
-                </h3>
-                <span style={{ fontSize: "0.8rem", color: "#6a827b", fontWeight: 600 }}>Live Feed</span>
+            <div className="sd-layout">
+              <div className="sd-stack">
+                <section className="sd-section" aria-labelledby="sd-timetable-heading">
+                  <div className="sd-section-head">
+                    <div className="sd-section-title">
+                      <span className="sd-section-icon" aria-hidden="true">
+                        <CalendarDays size={16} strokeWidth={2} />
+                      </span>
+                      <h2 id="sd-timetable-heading">Today&apos;s timetable</h2>
+                    </div>
+                    <span className="sd-meta">Coming soon</span>
+                  </div>
+
+                  {loadingData ? (
+                    <p className="sd-loading">Loading schedule...</p>
+                  ) : todaysClasses.length === 0 ? (
+                    <div className="sd-empty">
+                      <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
+                      <p>
+                        Timetable is not available yet. Your classes will appear here once scheduling
+                        is enabled.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="sd-list">
+                      {todaysClasses.map((cls, index) => (
+                        <article key={`${cls.code}-${index}`} className="sd-item">
+                          <div className="sd-time">
+                            <Clock3 size={14} strokeWidth={2} aria-hidden="true" />
+                            <span>{cls.time}</span>
+                          </div>
+                          <div className="sd-item-main">
+                            <h3 className="sd-item-title">{cls.subject}</h3>
+                            <p className="sd-item-sub">
+                              <span>{cls.code}</span>
+                              <span className="sd-dot" aria-hidden="true" />
+                              <MapPin size={13} strokeWidth={2} aria-hidden="true" />
+                              <span>{cls.room}</span>
+                            </p>
+                          </div>
+                          <span className={getClassStatusPill(cls.status)}>{cls.status}</span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section
+                  id="pending-assignments"
+                  className="sd-section"
+                  aria-labelledby="sd-assignments-heading"
+                >
+                  <div className="sd-section-head">
+                    <div className="sd-section-title">
+                      <span className="sd-section-icon" aria-hidden="true">
+                        <ClipboardList size={16} strokeWidth={2} />
+                      </span>
+                      <h2 id="sd-assignments-heading">Pending assignments</h2>
+                    </div>
+                    <span className="sd-meta">
+                      {loadingData ? "Loading" : `${pendingAssignments.length} pending`}
+                    </span>
+                  </div>
+
+                  {loadingData ? (
+                    <p className="sd-loading">Loading pending assignments...</p>
+                  ) : pendingAssignments.length === 0 ? (
+                    <div className="sd-empty">
+                      <ClipboardList size={18} strokeWidth={2} aria-hidden="true" />
+                      <p>No pending assignments right now.</p>
+                    </div>
+                  ) : (
+                    <div className="sd-list">
+                      {pendingAssignments.slice(0, 5).map((assignment) => {
+                        const tone = getDeadlineTone(assignment.deadline);
+                        const pill = getDeadlinePill(tone);
+
+                        return (
+                          <article key={assignment.assignment_id} className="sd-item">
+                            <div className="sd-item-main">
+                              <h3 className="sd-item-title">{assignment.title}</h3>
+                              <p className="sd-item-sub">
+                                <Clock3 size={13} strokeWidth={2} aria-hidden="true" />
+                                <span>Due {formatDeadline(assignment.deadline)}</span>
+                                <span className="sd-dot" aria-hidden="true" />
+                                <span>Max {assignment.max_marks} marks</span>
+                              </p>
+                            </div>
+                            <span className={pill.className}>{pill.label}</span>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
               </div>
 
-              {loadingData ? (
-                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
-                  Loading schedule from institutional gateway...
-                </div>
-              ) : todaysClasses.length === 0 ? (
-                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
-                  No classes scheduled for today or backend sync pending.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: "12px" }}>
-                  {todaysClasses.map((cls, index) => (
-                    <div key={index} style={{ background: "#f8fbf9", padding: "16px 20px", borderRadius: "14px", border: "1px solid #e2ece8", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                        <div style={{ background: "#e8f3ef", color: "#0f6b57", padding: "10px 14px", borderRadius: "10px", fontSize: "0.85rem", fontWeight: 700, minWidth: "140px", textAlign: "center" }}>
-                          {cls.time}
-                        </div>
-                        <div>
-                          <h4 style={{ margin: "0 0 4px", color: "#12241f", fontSize: "1rem", fontWeight: 700 }}>{cls.subject}</h4>
-                          <p style={{ margin: 0, color: "#6a827b", fontSize: "0.82rem" }}>Code: {cls.code} • Location: {cls.room}</p>
-                        </div>
-                      </div>
+              <div className="sd-stack">
+                <section className="sd-section" aria-labelledby="sd-attendance-heading">
+                  <div className="sd-section-head">
+                    <div className="sd-section-title">
+                      <span className="sd-section-icon" aria-hidden="true">
+                        <Percent size={16} strokeWidth={2} />
+                      </span>
+                      <h2 id="sd-attendance-heading">Attendance summary</h2>
+                    </div>
+                    <span className="sd-meta">Coming soon</span>
+                  </div>
+
+                  <div className="sd-attendance-card">
+                    <div className="sd-attendance-top">
+                      <span className="sd-attendance-icon" aria-hidden="true">
+                        <Percent size={18} strokeWidth={2} />
+                      </span>
                       <div>
-                        <span style={{ 
-                          fontSize: "0.75rem", 
-                          padding: "4px 10px", 
-                          borderRadius: "6px", 
-                          fontWeight: 700,
-                          background: cls.status === "Completed" ? "#edf7ed" : cls.status === "Ongoing" ? "#e1f5fe" : "#f1f3f4",
-                          color: cls.status === "Completed" ? "#2e7d32" : cls.status === "Ongoing" ? "#0288d1" : "#5f6368"
-                        }}>
-                          {cls.status}
-                        </span>
+                        <p className="sd-attendance-label">Overall attendance</p>
+                        <p className="sd-attendance-value">—</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <p className="sd-attendance-note">
+                      Attendance tracking is not available yet. Your overall percentage and
+                      subject-wise warnings will appear here once attendance APIs are enabled.
+                    </p>
+                  </div>
+                </section>
 
-            {/* Recent Notices Section */}
-            <div style={{ marginBottom: "36px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
-                  📢 Recent Institutional Notices
-                </h3>
-                <span style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, cursor: "pointer" }}>View All →</span>
-              </div>
-
-              {loadingData ? (
-                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
-                  Fetching campus notices...
-                </div>
-              ) : recentNotices.length === 0 ? (
-                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
-                  No active notices found from backend server.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: "12px" }}>
-                  {recentNotices.map((notice, index) => (
-                    <div key={index} style={{ background: "#f8fbf9", padding: "16px 20px", borderRadius: "14px", border: "1px solid #e2ece8", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                          <span style={{ fontSize: "0.72rem", fontWeight: 700, background: notice.urgent ? "#fde8e8" : "#e8f3ef", color: notice.urgent ? "#9f2d22" : "#0f6b57", padding: "2px 8px", borderRadius: "4px" }}>
-                            {notice.tag}
-                          </span>
-                          <span style={{ fontSize: "0.78rem", color: "#6a827b" }}>{notice.date}</span>
-                        </div>
-                        <h4 style={{ margin: 0, color: "#12241f", fontSize: "0.95rem", fontWeight: 700 }}>{notice.title}</h4>
-                      </div>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f6b57", cursor: "pointer" }}>Read →</span>
+                <section className="sd-section" aria-labelledby="sd-notices-heading">
+                  <div className="sd-section-head">
+                    <div className="sd-section-title">
+                      <span className="sd-section-icon" aria-hidden="true">
+                        <Megaphone size={16} strokeWidth={2} />
+                      </span>
+                      <h2 id="sd-notices-heading">Recent notices</h2>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <span className="sd-meta">Coming soon</span>
+                  </div>
+
+                  {loadingData ? (
+                    <p className="sd-loading">Loading notices...</p>
+                  ) : recentNotices.length === 0 ? (
+                    <div className="sd-empty">
+                      <Megaphone size={18} strokeWidth={2} aria-hidden="true" />
+                      <p>
+                        Notices are not available yet. Campus announcements will appear here when the
+                        notice board is enabled.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="sd-list">
+                      {recentNotices.map((notice, index) => (
+                        <article key={`${notice.title}-${index}`} className="sd-item">
+                          <div className="sd-item-main">
+                            <p className="sd-notice-meta">
+                              <span className={`sd-notice-tag${notice.urgent ? " urgent" : ""}`}>
+                                {notice.tag}
+                              </span>
+                              {notice.date}
+                            </p>
+                            <h3 className="sd-item-title">{notice.title}</h3>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
 
-            {/* Quick Links & Portal Actions */}
-            <h3 style={{ margin: "0 0 20px", fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
-              🚀 Quick Links & Actions
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
-              <div style={{ background: "#f8fbf9", padding: "24px", borderRadius: "20px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "1.5rem" }}>📚</span>
-                <h4 style={{ margin: "12px 0 6px", color: "#12241f", fontSize: "1.05rem" }}>LMS & Course Material</h4>
-                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Access lecture notes, syllabus frameworks, and semester uploads.</p>
-                <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57", cursor: "pointer" }}>Access Portal →</span>
+            <section className="sd-quick" aria-labelledby="sd-quick-heading">
+              <div className="sd-section-title sd-quick-heading">
+                <span className="sd-section-icon" aria-hidden="true">
+                  <ArrowRight size={16} strokeWidth={2} />
+                </span>
+                <h2 id="sd-quick-heading">Quick links</h2>
               </div>
 
-              <div style={{ background: "#f8fbf9", padding: "24px", borderRadius: "20px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "1.5rem" }}>📝</span>
-                <h4 style={{ margin: "12px 0 6px", color: "#12241f", fontSize: "1.05rem" }}>Assignment Submissions</h4>
-                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Upload pending lab assignments and track evaluation scores.</p>
-                <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57", cursor: "pointer" }}>Upload Files →</span>
-              </div>
+              <div className="sd-quick-grid">
+                <article className="sd-quick-card">
+                  <span className="sd-quick-icon" aria-hidden="true">
+                    <BookOpen size={18} strokeWidth={2} />
+                  </span>
+                  <h3>Notes & study material</h3>
+                  <p>Access lecture notes, syllabus frameworks, and semester uploads.</p>
+                  <span className="sd-quick-muted">Coming soon</span>
+                </article>
 
-              <div style={{ background: "#f8fbf9", padding: "24px", borderRadius: "20px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "1.5rem" }}>🗂️</span>
-                <h4 style={{ margin: "12px 0 6px", color: "#12241f", fontSize: "1.05rem" }}>Grade Card & Records</h4>
-                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Review past semester scorecards and transcript details.</p>
-                <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57", cursor: "pointer" }}>View Records →</span>
-              </div>
-            </div>
+                <article className="sd-quick-card">
+                  <span className="sd-quick-icon" aria-hidden="true">
+                    <FileText size={18} strokeWidth={2} />
+                  </span>
+                  <h3>Assignment submissions</h3>
+                  <p>Review pending work and track evaluation status.</p>
+                  <a href="#pending-assignments" className="sd-quick-link">
+                    View pending
+                    <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
+                  </a>
+                </article>
 
+                <article className="sd-quick-card">
+                  <span className="sd-quick-icon" aria-hidden="true">
+                    <UserRound size={18} strokeWidth={2} />
+                  </span>
+                  <h3>Profile & records</h3>
+                  <p>Open your academic profile and institutional contact details.</p>
+                  <Link to="/student-profile" className="sd-quick-link">
+                    Open profile
+                    <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
+                  </Link>
+                </article>
+              </div>
+            </section>
           </div>
-        </div>
-
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
