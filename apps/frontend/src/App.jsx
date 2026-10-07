@@ -7,6 +7,7 @@ import ForgotPassword from "./pages/forgotpass";
 import ResetPassword from "./pages/ResetPassword";
 import FacultyProfile from "./pages/faculty_profile";
 import StudentProfile from "./pages/student_prof";
+import StudentDashboard from "./pages/StudentDashboard";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -16,6 +17,16 @@ function ProtectedRoute({ children }) {
   }
 
   return children;
+}
+
+function RoleDashboard() {
+  const { user } = useAuth();
+
+  if (user?.role === "STUDENT") {
+    return <StudentDashboard />;
+  }
+
+  return <Dashboard />;
 }
 
 function App() {
@@ -29,7 +40,7 @@ function App() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <RoleDashboard />
           </ProtectedRoute>
         }
       />
