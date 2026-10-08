@@ -1,104 +1,60 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  AlertCircle,
+  AlertTriangle,
   ArrowRight,
-  BookOpen,
-  CalendarDays,
+  BarChart3,
+  CalendarClock,
   ClipboardList,
-  Clock3,
-  FileText,
-  GraduationCap,
-  LayoutDashboard,
-  LogOut,
-  MapPin,
-  Megaphone,
+  LineChart,
   Percent,
-  UserRound,
+  RotateCw,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import ActivityList from "../components/student-dashboard/ActivityList";
+import AssignmentPanel from "../components/student-dashboard/AssignmentPanel";
+import type {
+  AssignmentGroups,
+  AssignmentTab,
+} from "../components/student-dashboard/AssignmentPanel";
+import DashboardHeader from "../components/student-dashboard/DashboardHeader";
+import DashboardSidebar from "../components/student-dashboard/DashboardSidebar";
+import DeadlineList from "../components/student-dashboard/DeadlineList";
+import MetricCard from "../components/student-dashboard/MetricCard";
+import NoticePreview from "../components/student-dashboard/NoticePreview";
+import PerformanceChart from "../components/student-dashboard/PerformanceChart";
+import type { PerformancePoint } from "../components/student-dashboard/PerformanceChart";
+import QuickActions from "../components/student-dashboard/QuickActions";
+import SectionCard, {
+  SectionEmpty,
+  SectionError,
+  SectionSkeleton,
+} from "../components/student-dashboard/SectionCard";
+import type {
+  StudentAssignment,
+  StudentProfileSummary,
+} from "../components/student-dashboard/dashboardUtils";
+import {
+  describeDeadline,
+  formatShortDate,
+  getAcademicYear,
+  getDeadlineTone,
+  getGreeting,
+  getScorePercent,
+  getSubjectLabel,
+  sortByDeadline,
+  toTime,
+} from "../components/student-dashboard/dashboardUtils";
 import "./StudentDashboard.css";
 
-interface ClassSchedule {
-  time: string;
-  subject: string;
-  code: string;
-  room: string;
-  status: string;
-}
+const WEEK = 7 * 24 * 60 * 60 * 1000;
+const CHART_LIMIT = 10;
 
-interface Notice {
-  title: string;
-  date: string;
-  tag: string;
-  urgent: boolean;
-}
-
-interface StudentAssignment {
-  assignment_id: number;
-  title: string;
-  subject_id: number;
-  section: string;
-  deadline: string;
-  max_marks: number;
-  status: string;
-  submission: unknown;
-}
-
-type DeadlineTone = "comfortable" | "soon" | "urgent";
-
-function getDeadlineTone(deadline: string | Date): DeadlineTone {
-  const hoursLeft = (new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60);
-
-  if (hoursLeft <= 24) {
-    return "urgent";
-  }
-
-  if (hoursLeft <= 48) {
-    return "soon";
-  }
-
-  return "comfortable";
-}
-
-function formatDeadline(deadline: string | Date): string {
-  const date = new Date(deadline);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Deadline unavailable";
-  }
-
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function getDeadlinePill(tone: DeadlineTone): { className: string; label: string } {
-  if (tone === "urgent") {
-    return { className: "sd-pill sd-pill-urgent", label: "Due within 24h" };
-  }
-
-  if (tone === "soon") {
-    return { className: "sd-pill sd-pill-soon", label: "Due soon" };
-  }
-
-  return { className: "sd-pill sd-pill-ok", label: "On track" };
-}
-
-function getClassStatusPill(status: string): string {
-  if (status === "Completed") {
-    return "sd-pill sd-pill-ok";
-  }
-
-  if (status === "Ongoing") {
-    return "sd-pill sd-pill-info";
-  }
-
-  return "sd-pill sd-pill-neutral";
+function getErrorMessage(error: unknown, fallback: string): string {
+  return (
+    (error as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback
+  );
 }
 
 export default function StudentDashboard(): React.JSX.Element {
@@ -107,56 +63,82 @@ export default function StudentDashboard(): React.JSX.Element {
     logout: () => void;
   };
   const navigate = useNavigate();
+  const assignmentsRef = useRef<HTMLDivElement>(null);
 
-  const [todaysClasses, setTodaysClasses] = useState<ClassSchedule[]>([]);
-  const [recentNotices, setRecentNotices] = useState<Notice[]>([]);
-  const [pendingAssignments, setPendingAssignments] = useState<StudentAssignment[]>([]);
-  const [loadingData, setLoadingData] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+  const [profile, setProfile] = useState<StudentProfileSummary | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
+  const [profileError, setProfileError] = useState<string>("");
+
+  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState<boolean>(true);
+  const [assignmentsError, setAssignmentsError] = useState<string>("");
+
+  const [reloadKey, setReloadKey] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<AssignmentTab>("pending");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
   }
 
+  const showAssignments = useCallback((tab?: AssignmentTab) => {
+    if (tab) {
+      setActiveTab(tab);
+    }
+    assignmentsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     async function fetchDashboardData() {
-      try {
-        setLoadingData(true);
-        setError("");
+      setProfileLoading(true);
+      setAssignmentsLoading(true);
+      setProfileError("");
+      setAssignmentsError("");
 
-        const scheduleData: ClassSchedule[] = [];
-        const noticesData: Notice[] = [];
+      const [profileResult, assignmentsResult] = await Promise.allSettled([
+        api.get("/profile"),
+        api.get("/submissions/my"),
+      ]);
 
-        const assignmentsResponse = await api.get("/submissions/my");
-        const assignments = Array.isArray(assignmentsResponse.data?.assignments)
-          ? (assignmentsResponse.data.assignments as StudentAssignment[])
-          : [];
-
-        const pending = assignments
-          .filter((assignment) => assignment.status === "Pending")
-          .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
-
-        if (!cancelled) {
-          setTodaysClasses(scheduleData);
-          setRecentNotices(noticesData);
-          setPendingAssignments(pending);
-        }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          const message =
-            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-            "Failed to load dashboard data.";
-          setError(message);
-          setPendingAssignments([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingData(false);
-        }
+      if (cancelled) {
+        return;
       }
+
+      if (profileResult.status === "fulfilled") {
+        const data = profileResult.value.data?.profile;
+        setProfile(
+          data
+            ? {
+                fullName: data.full_name || "",
+                rollNumber: data.roll_number || "",
+                department: data.department?.dept_name || "",
+                semester: data.semester ?? null,
+                section: data.section || "",
+                photoUrl: data.photo_url || null,
+              }
+            : null
+        );
+      } else {
+        setProfile(null);
+        setProfileError(getErrorMessage(profileResult.reason, "Profile details unavailable."));
+      }
+      setProfileLoading(false);
+
+      if (assignmentsResult.status === "fulfilled") {
+        const list = assignmentsResult.value.data?.assignments;
+        setAssignments(Array.isArray(list) ? (list as StudentAssignment[]) : []);
+      } else {
+        setAssignments([]);
+        setAssignmentsError(
+          getErrorMessage(assignmentsResult.reason, "Failed to load your assignments.")
+        );
+      }
+      setAssignmentsLoading(false);
     }
 
     fetchDashboardData();
@@ -164,264 +146,296 @@ export default function StudentDashboard(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, reloadKey]);
+
+  useEffect(() => {
+    if (!sidebarOpen) {
+      return undefined;
+    }
+
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [sidebarOpen]);
+
+  const derived = useMemo(() => {
+    const now = Date.now();
+    const pending = sortByDeadline(assignments.filter((item) => item.status === "Pending"));
+    const overdue = pending.filter((item) => toTime(item.deadline) < now);
+    const dueThisWeek = pending.filter((item) => {
+      const time = toTime(item.deadline);
+      return time >= now && time - now <= WEEK;
+    });
+    const graded = sortByDeadline(assignments.filter((item) => getScorePercent(item) !== null));
+    const scores = graded.map((item) => getScorePercent(item) as number);
+    const averageScore = scores.length
+      ? Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 10) / 10
+      : null;
+
+    const groups: AssignmentGroups = {
+      pending,
+      submitted: assignments.filter(
+        (item) =>
+          item.status === "Submitted" || (item.status === "Checked" && !item.submission?.is_late)
+      ),
+      late: assignments.filter(
+        (item) =>
+          item.status === "Late" || (item.status === "Checked" && Boolean(item.submission?.is_late))
+      ),
+      graded: [...assignments.filter((item) => item.status === "Graded")].sort(
+        (a, b) => toTime(b.deadline) - toTime(a.deadline)
+      ),
+    };
+
+    const activity = assignments
+      .filter((item) => item.submission?.submitted_at)
+      .sort(
+        (a, b) =>
+          toTime(b.submission?.submitted_at || "") - toTime(a.submission?.submitted_at || "")
+      );
+
+    const alerts = pending.filter((item) => getDeadlineTone(item.deadline, now) !== "normal");
+
+    const chartPoints: PerformancePoint[] = graded.slice(-CHART_LIMIT).map((item) => ({
+      id: item.assignment_id,
+      label: item.title,
+      detail: `${getSubjectLabel(item)} · due ${formatShortDate(item.deadline)}`,
+      value: getScorePercent(item) as number,
+      caption: `${item.submission?.marks}/${item.max_marks} marks`,
+    }));
+
+    return {
+      pending,
+      overdue,
+      dueThisWeek,
+      graded,
+      averageScore,
+      groups,
+      activity,
+      alerts,
+      chartPoints,
+    };
+  }, [assignments]);
+
+  const displayName = profile?.fullName || user?.name || "Student";
+  const firstName = displayName.split(" ")[0];
+  const contextChips = [
+    profile?.semester !== null && profile?.semester !== undefined
+      ? { label: "Semester", value: String(profile.semester) }
+      : null,
+    profile?.department ? { label: "Department", value: profile.department } : null,
+    profile?.section ? { label: "Section", value: profile.section } : null,
+    { label: "Academic year", value: getAcademicYear() },
+  ].filter((chip): chip is { label: string; value: string } => chip !== null);
+
+  const nextDeadline = derived.dueThisWeek[0];
 
   return (
     <div className="sd-page">
-      <div className="sd-shell">
-        <header className="sd-topbar">
-          <div className="sd-brand">
-            <span className="sd-brand-mark" aria-hidden="true">
-              <GraduationCap size={18} strokeWidth={2} />
-            </span>
-            <div>
-              <p className="sd-brand-name">CampusOS</p>
-              <p className="sd-brand-title">Student Portal</p>
-            </div>
-          </div>
-          <div className="sd-top-actions">
-            <Link to="/student-profile" className="sd-btn sd-btn-ghost">
-              <UserRound size={16} strokeWidth={2} aria-hidden="true" />
-              <span>Profile</span>
-            </Link>
-            <button type="button" className="sd-btn sd-btn-danger" onClick={handleLogout}>
-              <LogOut size={16} strokeWidth={2} aria-hidden="true" />
-              <span>Sign out</span>
-            </button>
-          </div>
-        </header>
+      <DashboardSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onAssignmentsClick={() => showAssignments()}
+      />
 
-        <main className="sd-panel">
-          <section className="sd-hero">
-            <div className="sd-hero-icon" aria-hidden="true">
-              <LayoutDashboard size={22} strokeWidth={2} />
+      <div className="sd-main">
+        <DashboardHeader
+          name={displayName}
+          subtitle={profile?.rollNumber ? `Roll ${profile.rollNumber}` : "Student"}
+          photoUrl={profile?.photoUrl || null}
+          alerts={derived.alerts}
+          alertsLoading={assignmentsLoading}
+          onMenuClick={() => setSidebarOpen(true)}
+          onLogout={handleLogout}
+          onAlertClick={() => showAssignments("pending")}
+        />
+
+        <main className="sd-content">
+          <section className="sd-welcome" aria-labelledby="sd-welcome-heading">
+            <div className="sd-welcome-copy">
+              <h1 id="sd-welcome-heading">
+                {getGreeting()}, {firstName} <span aria-hidden="true">👋</span>
+              </h1>
+              <p>Here&apos;s your academic overview for this semester.</p>
+
+              {profileLoading ? (
+                <div className="sd-chips" aria-busy="true">
+                  <span className="sd-skeleton-row sd-skeleton-chip" />
+                  <span className="sd-skeleton-row sd-skeleton-chip" />
+                  <span className="sd-skeleton-row sd-skeleton-chip" />
+                </div>
+              ) : (
+                <ul className="sd-chips" aria-label="Academic context">
+                  {contextChips.map((chip) => (
+                    <li key={chip.label} className="sd-chip">
+                      <span>{chip.label}</span>
+                      {chip.value}
+                    </li>
+                  ))}
+                  {profileError && (
+                    <li className="sd-chip is-error">
+                      <AlertTriangle size={13} strokeWidth={2} aria-hidden="true" />
+                      {profileError}
+                      <button type="button" className="sd-link-btn" onClick={reload}>
+                        <RotateCw size={12} strokeWidth={2} aria-hidden="true" />
+                        Retry
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              )}
             </div>
-            <div className="sd-hero-copy">
-              <p className="sd-hero-kicker">Student dashboard</p>
-              <h1>Welcome back, {user?.name || "Student"}</h1>
-              <p>Your timetable, assignments, notices, and attendance in one place.</p>
-            </div>
+
+            <button
+              type="button"
+              className="sd-btn sd-btn-primary"
+              onClick={() => showAssignments("pending")}
+            >
+              View pending work
+              <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
+            </button>
           </section>
 
-          <div className="sd-body">
-            {error && (
-              <div className="sd-alert" role="alert">
-                <AlertCircle size={18} strokeWidth={2} aria-hidden="true" />
-                <span>{error}</span>
-              </div>
-            )}
+          <section className="sd-metrics" aria-label="Academic overview">
+            <MetricCard
+              label="Average score"
+              icon={BarChart3}
+              loading={assignmentsLoading}
+              tone={derived.averageScore === null ? "muted" : "default"}
+              value={
+                assignmentsError
+                  ? "—"
+                  : derived.averageScore === null
+                    ? "—"
+                    : `${derived.averageScore}%`
+              }
+              hint={
+                assignmentsError
+                  ? "Unavailable right now"
+                  : derived.graded.length
+                    ? `Across ${derived.graded.length} released assignment${derived.graded.length === 1 ? "" : "s"}`
+                    : "No released grades yet"
+              }
+            />
+            <MetricCard
+              label="Pending assignments"
+              icon={ClipboardList}
+              loading={assignmentsLoading}
+              tone={derived.overdue.length ? "danger" : "default"}
+              value={assignmentsError ? "—" : derived.pending.length}
+              hint={
+                assignmentsError
+                  ? "Unavailable right now"
+                  : derived.overdue.length
+                    ? `${derived.overdue.length} overdue`
+                    : derived.pending.length
+                      ? "None overdue"
+                      : "You're all caught up"
+              }
+            />
+            <MetricCard
+              label="Due in 7 days"
+              icon={CalendarClock}
+              loading={assignmentsLoading}
+              tone={
+                nextDeadline && getDeadlineTone(nextDeadline.deadline) === "approaching"
+                  ? "warn"
+                  : "default"
+              }
+              value={assignmentsError ? "—" : derived.dueThisWeek.length}
+              hint={
+                assignmentsError
+                  ? "Unavailable right now"
+                  : nextDeadline
+                    ? `Next: ${describeDeadline(nextDeadline.deadline).replace("Due ", "")}`
+                    : "Nothing due this week"
+              }
+            />
+            <MetricCard
+              label="Attendance"
+              icon={Percent}
+              tone="muted"
+              value="—"
+              hint="Not tracked in CampusOS yet"
+            />
+          </section>
 
-            <div className="sd-layout">
-              <div className="sd-stack">
-                <section className="sd-section" aria-labelledby="sd-timetable-heading">
-                  <div className="sd-section-head">
-                    <div className="sd-section-title">
-                      <span className="sd-section-icon" aria-hidden="true">
-                        <CalendarDays size={16} strokeWidth={2} />
-                      </span>
-                      <h2 id="sd-timetable-heading">Today&apos;s timetable</h2>
-                    </div>
-                    <span className="sd-meta">Coming soon</span>
-                  </div>
-
-                  {loadingData ? (
-                    <p className="sd-loading">Loading schedule...</p>
-                  ) : todaysClasses.length === 0 ? (
-                    <div className="sd-empty">
-                      <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
-                      <p>
-                        Timetable is not available yet. Your classes will appear here once scheduling
-                        is enabled.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="sd-list">
-                      {todaysClasses.map((cls, index) => (
-                        <article key={`${cls.code}-${index}`} className="sd-item">
-                          <div className="sd-time">
-                            <Clock3 size={14} strokeWidth={2} aria-hidden="true" />
-                            <span>{cls.time}</span>
-                          </div>
-                          <div className="sd-item-main">
-                            <h3 className="sd-item-title">{cls.subject}</h3>
-                            <p className="sd-item-sub">
-                              <span>{cls.code}</span>
-                              <span className="sd-dot" aria-hidden="true" />
-                              <MapPin size={13} strokeWidth={2} aria-hidden="true" />
-                              <span>{cls.room}</span>
-                            </p>
-                          </div>
-                          <span className={getClassStatusPill(cls.status)}>{cls.status}</span>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                <section
-                  id="pending-assignments"
-                  className="sd-section"
-                  aria-labelledby="sd-assignments-heading"
-                >
-                  <div className="sd-section-head">
-                    <div className="sd-section-title">
-                      <span className="sd-section-icon" aria-hidden="true">
-                        <ClipboardList size={16} strokeWidth={2} />
-                      </span>
-                      <h2 id="sd-assignments-heading">Pending assignments</h2>
-                    </div>
-                    <span className="sd-meta">
-                      {loadingData ? "Loading" : `${pendingAssignments.length} pending`}
-                    </span>
-                  </div>
-
-                  {loadingData ? (
-                    <p className="sd-loading">Loading pending assignments...</p>
-                  ) : pendingAssignments.length === 0 ? (
-                    <div className="sd-empty">
-                      <ClipboardList size={18} strokeWidth={2} aria-hidden="true" />
-                      <p>No pending assignments right now.</p>
-                    </div>
-                  ) : (
-                    <div className="sd-list">
-                      {pendingAssignments.slice(0, 5).map((assignment) => {
-                        const tone = getDeadlineTone(assignment.deadline);
-                        const pill = getDeadlinePill(tone);
-
-                        return (
-                          <article key={assignment.assignment_id} className="sd-item">
-                            <div className="sd-item-main">
-                              <h3 className="sd-item-title">{assignment.title}</h3>
-                              <p className="sd-item-sub">
-                                <Clock3 size={13} strokeWidth={2} aria-hidden="true" />
-                                <span>Due {formatDeadline(assignment.deadline)}</span>
-                                <span className="sd-dot" aria-hidden="true" />
-                                <span>Max {assignment.max_marks} marks</span>
-                              </p>
-                            </div>
-                            <span className={pill.className}>{pill.label}</span>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </div>
-
-              <div className="sd-stack">
-                <section className="sd-section" aria-labelledby="sd-attendance-heading">
-                  <div className="sd-section-head">
-                    <div className="sd-section-title">
-                      <span className="sd-section-icon" aria-hidden="true">
-                        <Percent size={16} strokeWidth={2} />
-                      </span>
-                      <h2 id="sd-attendance-heading">Attendance summary</h2>
-                    </div>
-                    <span className="sd-meta">Coming soon</span>
-                  </div>
-
-                  <div className="sd-attendance-card">
-                    <div className="sd-attendance-top">
-                      <span className="sd-attendance-icon" aria-hidden="true">
-                        <Percent size={18} strokeWidth={2} />
-                      </span>
-                      <div>
-                        <p className="sd-attendance-label">Overall attendance</p>
-                        <p className="sd-attendance-value">—</p>
-                      </div>
-                    </div>
-                    <p className="sd-attendance-note">
-                      Attendance tracking is not available yet. Your overall percentage and
-                      subject-wise warnings will appear here once attendance APIs are enabled.
+          <div className="sd-grid">
+            <div className="sd-col-main">
+              <SectionCard
+                title="Performance trend"
+                icon={LineChart}
+                meta={
+                  !assignmentsLoading && !assignmentsError && derived.chartPoints.length > 0
+                    ? `Last ${derived.chartPoints.length} released`
+                    : null
+                }
+              >
+                {assignmentsLoading ? (
+                  <SectionSkeleton rows={4} />
+                ) : assignmentsError ? (
+                  <SectionError message={assignmentsError} onRetry={reload} />
+                ) : derived.chartPoints.length === 0 ? (
+                  <SectionEmpty
+                    icon={LineChart}
+                    title="No released grades yet"
+                    description="Your score trend across assignments will appear once faculty release marks."
+                  />
+                ) : (
+                  <>
+                    <PerformanceChart
+                      points={derived.chartPoints}
+                      ariaLabel="Score percentage across released assignments"
+                    />
+                    <p className="sd-chart-legend">
+                      <span className="sd-legend-line" aria-hidden="true" />
+                      Score %
+                      {derived.chartPoints.length > 1 && (
+                        <>
+                          <span className="sd-legend-line is-dashed" aria-hidden="true" />
+                          Average
+                        </>
+                      )}
                     </p>
-                  </div>
-                </section>
+                  </>
+                )}
+              </SectionCard>
 
-                <section className="sd-section" aria-labelledby="sd-notices-heading">
-                  <div className="sd-section-head">
-                    <div className="sd-section-title">
-                      <span className="sd-section-icon" aria-hidden="true">
-                        <Megaphone size={16} strokeWidth={2} />
-                      </span>
-                      <h2 id="sd-notices-heading">Recent notices</h2>
-                    </div>
-                    <span className="sd-meta">Coming soon</span>
-                  </div>
-
-                  {loadingData ? (
-                    <p className="sd-loading">Loading notices...</p>
-                  ) : recentNotices.length === 0 ? (
-                    <div className="sd-empty">
-                      <Megaphone size={18} strokeWidth={2} aria-hidden="true" />
-                      <p>
-                        Notices are not available yet. Campus announcements will appear here when the
-                        notice board is enabled.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="sd-list">
-                      {recentNotices.map((notice, index) => (
-                        <article key={`${notice.title}-${index}`} className="sd-item">
-                          <div className="sd-item-main">
-                            <p className="sd-notice-meta">
-                              <span className={`sd-notice-tag${notice.urgent ? " urgent" : ""}`}>
-                                {notice.tag}
-                              </span>
-                              {notice.date}
-                            </p>
-                            <h3 className="sd-item-title">{notice.title}</h3>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
+              <div ref={assignmentsRef} className="sd-anchor">
+                <AssignmentPanel
+                  id="sd-assignments"
+                  groups={derived.groups}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  loading={assignmentsLoading}
+                  error={assignmentsError}
+                  onRetry={reload}
+                />
               </div>
             </div>
 
-            <section className="sd-quick" aria-labelledby="sd-quick-heading">
-              <div className="sd-section-title sd-quick-heading">
-                <span className="sd-section-icon" aria-hidden="true">
-                  <ArrowRight size={16} strokeWidth={2} />
-                </span>
-                <h2 id="sd-quick-heading">Quick links</h2>
-              </div>
-
-              <div className="sd-quick-grid">
-                <article className="sd-quick-card">
-                  <span className="sd-quick-icon" aria-hidden="true">
-                    <BookOpen size={18} strokeWidth={2} />
-                  </span>
-                  <h3>Notes & study material</h3>
-                  <p>Access lecture notes, syllabus frameworks, and semester uploads.</p>
-                  <span className="sd-quick-muted">Coming soon</span>
-                </article>
-
-                <article className="sd-quick-card">
-                  <span className="sd-quick-icon" aria-hidden="true">
-                    <FileText size={18} strokeWidth={2} />
-                  </span>
-                  <h3>Assignment submissions</h3>
-                  <p>Review pending work and track evaluation status.</p>
-                  <a href="#pending-assignments" className="sd-quick-link">
-                    View pending
-                    <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
-                  </a>
-                </article>
-
-                <article className="sd-quick-card">
-                  <span className="sd-quick-icon" aria-hidden="true">
-                    <UserRound size={18} strokeWidth={2} />
-                  </span>
-                  <h3>Profile & records</h3>
-                  <p>Open your academic profile and institutional contact details.</p>
-                  <Link to="/student-profile" className="sd-quick-link">
-                    Open profile
-                    <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
-                  </Link>
-                </article>
-              </div>
-            </section>
+            <div className="sd-col-side">
+              <DeadlineList
+                deadlines={derived.pending}
+                loading={assignmentsLoading}
+                error={assignmentsError}
+                onRetry={reload}
+                onSelect={() => showAssignments("pending")}
+              />
+              <QuickActions onViewAssignments={() => showAssignments()} />
+              <ActivityList
+                items={derived.activity}
+                loading={assignmentsLoading}
+                error={assignmentsError}
+                onRetry={reload}
+              />
+              <NoticePreview notices={[]} />
+            </div>
           </div>
         </main>
       </div>

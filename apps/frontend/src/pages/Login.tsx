@@ -1,5 +1,16 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom"; // Added Link
+import { Navigate, useNavigate, Link } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
+import AuthHero, { AuthBrand } from "../components/AuthHero";
 import { useAuth } from "../context/AuthContext";
 import { loginUser } from "../services/auth";
 import "./Login.css";
@@ -98,40 +109,14 @@ export default function Login(): React.JSX.Element {
 
   return (
     <main className="campus-login-wrapper">
-      {/* Left Hero / College Showcase Panel */}
-      <section className="campus-hero-panel">
-        <div className="hero-content">
-          <div className="badge-pill">🏛️ Institutional Portal</div>
-          <h1>Welcome to CampusOS</h1>
-          <p>
-            Your complete academic ecosystem. Centralizing notices, notes, assignment submissions,
-            and real-time attendance tracking in one seamless operating system.
-          </p>
+      <AuthHero
+        title="Welcome to CampusOS"
+        description="Your complete academic ecosystem. Centralizing notices, notes, assignment submissions, and real-time attendance tracking in one seamless operating system."
+      />
 
-          <div className="campus-stats-grid">
-            <div className="stat-item">
-              <span className="stat-number">100%</span>
-              <span className="stat-label">Digital Sync</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">24/7</span>
-              <span className="stat-label">LMS Access</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">Secure</span>
-              <span className="stat-label">Role-Based Auth</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-footer-note">
-          <span>Secure SSL Encrypted Gateway</span>
-        </div>
-      </section>
-
-      {/* Right Login Form Panel */}
       <section className="login-card-section" aria-labelledby="login-title">
         <div className="login-card">
+          <AuthBrand className="auth-mobile-brand" />
           <div className="login-header">
             <h2 id="login-title">Sign in to portal</h2>
             <p className="login-subtitle">Enter your official college credentials to continue.</p>
@@ -140,17 +125,20 @@ export default function Login(): React.JSX.Element {
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div className="field">
               <label htmlFor="email">Institutional Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="student@college.edu"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
+              <div className="input-wrap">
+                <Mail className="input-icon" size={17} aria-hidden="true" />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="student@college.edu"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
             </div>
 
             <div className="field">
@@ -160,7 +148,8 @@ export default function Login(): React.JSX.Element {
                   Forgot password?
                 </Link>
               </div>
-              <div className="password-row">
+              <div className="input-wrap password-row">
+                <Lock className="input-icon" size={17} aria-hidden="true" />
                 <input
                   id="password"
                   name="password"
@@ -179,33 +168,42 @@ export default function Login(): React.JSX.Element {
                   aria-pressed={showPassword}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? "Hide" : "Show"}
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
             </div>
 
             {error && (
               <p className="form-error" role="alert">
-                ⚠️ {error}
+                <AlertCircle size={16} aria-hidden="true" />
+                {error}
               </p>
             )}
 
             <button className="submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Authenticating session…" : "Sign in to Dashboard"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="spin" size={17} aria-hidden="true" />
+                  Authenticating session…
+                </>
+              ) : (
+                <>
+                  Sign in to Dashboard
+                  <ArrowRight size={17} aria-hidden="true" />
+                </>
+              )}
             </button>
           </form>
 
-          {/* Added Register Link Section */}
-          <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Don't have an account?{" "}
-              <Link to="/register" className="forgot-link">
-                Create an account
-              </Link>
-            </p>
-          </div>
+          <p className="auth-switch">
+            Don't have an account?{" "}
+            <Link to="/register" className="forgot-link">
+              Create an account
+            </Link>
+          </p>
 
           <div className="login-card-footer">
+            <ShieldCheck size={14} aria-hidden="true" />
             <p>Protected by institutional security protocols. Unauthorized access is prohibited.</p>
           </div>
         </div>

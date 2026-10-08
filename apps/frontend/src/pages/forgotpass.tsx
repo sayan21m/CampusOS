@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
+import { AlertCircle, CheckCircle2, Loader2, Mail, Send, ShieldCheck } from "lucide-react";
+import AuthHero, { AuthBrand } from "../components/AuthHero";
 import { useAuth } from "../context/AuthContext";
 import { requestPasswordReset } from "../services/auth";
 import "./Login.css";
@@ -73,40 +75,14 @@ export default function ForgotPassword(): React.JSX.Element {
 
   return (
     <main className="campus-login-wrapper">
-      {/* Left Hero / College Showcase Panel */}
-      <section className="campus-hero-panel">
-        <div className="hero-content">
-          <div className="badge-pill">🏛️ Institutional Portal</div>
-          <h1>Password Recovery</h1>
-          <p>
-            Regain access to your CampusOS workspace securely. Update your institutional credentials
-            to continue accessing your academic ecosystem.
-          </p>
+      <AuthHero
+        title="Password Recovery"
+        description="Regain access to your CampusOS workspace securely. Update your institutional credentials to continue accessing your academic ecosystem."
+      />
 
-          <div className="campus-stats-grid">
-            <div className="stat-item">
-              <span className="stat-number">100%</span>
-              <span className="stat-label">Digital Sync</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">24/7</span>
-              <span className="stat-label">LMS Access</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">Secure</span>
-              <span className="stat-label">Role-Based Auth</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-footer-note">
-          <span>Secure SSL Encrypted Gateway</span>
-        </div>
-      </section>
-
-      {/* Right Form Panel */}
       <section className="login-card-section" aria-labelledby="forgot-title">
         <div className="login-card">
+          <AuthBrand className="auth-mobile-brand" />
           <div className="login-header">
             <h2 id="forgot-title">Reset your password</h2>
             <p className="login-subtitle">
@@ -117,57 +93,60 @@ export default function ForgotPassword(): React.JSX.Element {
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div className="field">
               <label htmlFor="email">Institutional Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="student@college.edu"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={isSubmitting}
-                required
-              />
+              <div className="input-wrap">
+                <Mail className="input-icon" size={17} aria-hidden="true" />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="student@college.edu"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
             </div>
 
             {error && (
               <p className="form-error" role="alert">
-                ⚠️ {error}
+                <AlertCircle size={16} aria-hidden="true" />
+                {error}
               </p>
             )}
 
             {successMessage && (
-              <p
-                style={{
-                  margin: 0,
-                  padding: "10px 14px",
-                  borderRadius: "10px",
-                  background: "#e8f3ef",
-                  color: "#0f6b57",
-                  fontSize: "0.88rem",
-                  fontWeight: 500,
-                }}
-                role="status"
-              >
-                ✅ {successMessage}
+              <p className="form-success" role="status">
+                <CheckCircle2 size={16} aria-hidden="true" />
+                {successMessage}
               </p>
             )}
 
             <button className="submit-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Sending reset link…" : "Send Reset Link"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="spin" size={17} aria-hidden="true" />
+                  Sending reset link…
+                </>
+              ) : (
+                <>
+                  <Send size={16} aria-hidden="true" />
+                  Send Reset Link
+                </>
+              )}
             </button>
           </form>
 
-          <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Remember your password?{" "}
-              <Link to="/login" className="forgot-link">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="auth-switch">
+            Remember your password?{" "}
+            <Link to="/login" className="forgot-link">
+              Sign in
+            </Link>
+          </p>
 
           <div className="login-card-footer">
+            <ShieldCheck size={14} aria-hidden="true" />
             <p>Protected by institutional security protocols. Unauthorized access is prohibited.</p>
           </div>
         </div>

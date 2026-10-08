@@ -1,5 +1,17 @@
 import React, { useState } from "react";
 import { Navigate, Link, useSearchParams } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
+import AuthHero, { AuthBrand } from "../components/AuthHero";
 import { useAuth } from "../context/AuthContext";
 import { resetPassword } from "../services/auth";
 import "./Login.css";
@@ -93,38 +105,14 @@ export default function ResetPassword(): React.JSX.Element {
 
   return (
     <main className="campus-login-wrapper">
-      <section className="campus-hero-panel">
-        <div className="hero-content">
-          <div className="badge-pill">🏛️ Institutional Portal</div>
-          <h1>Password Recovery</h1>
-          <p>
-            Use the secure link from your email to choose a new password and regain access to your
-            CampusOS workspace.
-          </p>
-
-          <div className="campus-stats-grid">
-            <div className="stat-item">
-              <span className="stat-number">100%</span>
-              <span className="stat-label">Digital Sync</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">24/7</span>
-              <span className="stat-label">LMS Access</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">Secure</span>
-              <span className="stat-label">Role-Based Auth</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-footer-note">
-          <span>Secure SSL Encrypted Gateway</span>
-        </div>
-      </section>
+      <AuthHero
+        title="Password Recovery"
+        description="Use the secure link from your email to choose a new password and regain access to your CampusOS workspace."
+      />
 
       <section className="login-card-section" aria-labelledby="reset-title">
         <div className="login-card">
+          <AuthBrand className="auth-mobile-brand" />
           <div className="login-header">
             <h2 id="reset-title">Create new password</h2>
             <p className="login-subtitle">
@@ -137,17 +125,20 @@ export default function ResetPassword(): React.JSX.Element {
           {!token ? (
             <div className="login-form">
               <p className="form-error" role="alert">
-                ⚠️ This reset link is missing a token. Request a new password reset email.
+                <AlertCircle size={16} aria-hidden="true" />
+                This reset link is missing a token. Request a new password reset email.
               </p>
-              <Link to="/forgot-password" className="submit-button" style={{ textAlign: "center" }}>
+              <Link to="/forgot-password" className="submit-button">
                 Request a new reset link
+                <ArrowRight size={17} aria-hidden="true" />
               </Link>
             </div>
           ) : (
             <form className="login-form" onSubmit={handleSubmit} noValidate>
               <div className="field">
                 <label htmlFor="newPassword">New Password</label>
-                <div className="password-row">
+                <div className="input-wrap password-row">
+                  <Lock className="input-icon" size={17} aria-hidden="true" />
                   <input
                     id="newPassword"
                     name="newPassword"
@@ -166,73 +157,77 @@ export default function ResetPassword(): React.JSX.Element {
                     aria-pressed={showPassword}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </div>
 
               <div className="field">
                 <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  disabled={isSubmitting || Boolean(successMessage)}
-                  required
-                />
+                <div className="input-wrap">
+                  <Lock className="input-icon" size={17} aria-hidden="true" />
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    disabled={isSubmitting || Boolean(successMessage)}
+                    required
+                  />
+                </div>
               </div>
 
               {error && (
                 <p className="form-error" role="alert">
-                  ⚠️ {error}
+                  <AlertCircle size={16} aria-hidden="true" />
+                  {error}
                 </p>
               )}
 
               {successMessage && (
-                <p
-                  style={{
-                    margin: 0,
-                    padding: "10px 14px",
-                    borderRadius: "10px",
-                    background: "#e8f3ef",
-                    color: "#0f6b57",
-                    fontSize: "0.88rem",
-                    fontWeight: 500,
-                  }}
-                  role="status"
-                >
-                  ✅ {successMessage}
+                <p className="form-success" role="status">
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                  {successMessage}
                 </p>
               )}
 
               {!successMessage && (
                 <button className="submit-button" type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Updating password…" : "Reset Password"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="spin" size={17} aria-hidden="true" />
+                      Updating password…
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound size={16} aria-hidden="true" />
+                      Reset Password
+                    </>
+                  )}
                 </button>
               )}
 
               {successMessage && (
-                <Link to="/login" className="submit-button" style={{ textAlign: "center" }}>
+                <Link to="/login" className="submit-button">
                   Go to Login
+                  <ArrowRight size={17} aria-hidden="true" />
                 </Link>
               )}
             </form>
           )}
 
-          <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Remember your password?{" "}
-              <Link to="/login" className="forgot-link">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="auth-switch">
+            Remember your password?{" "}
+            <Link to="/login" className="forgot-link">
+              Sign in
+            </Link>
+          </p>
 
           <div className="login-card-footer">
+            <ShieldCheck size={14} aria-hidden="true" />
             <p>Protected by institutional security protocols. Unauthorized access is prohibited.</p>
           </div>
         </div>
