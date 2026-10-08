@@ -1,11 +1,55 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  BriefcaseBusiness,
+  Building2,
+  CalendarCheck,
+  ClipboardList,
+  IdCard,
+  KeyRound,
+  LayoutDashboard,
+  Mail,
+  Megaphone,
+  PencilLine,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import "./faculty_profile.css";
+import ProfileLayout from "../components/profile/ProfileLayout";
+import {
+  ProfileError,
+  ProfileHero,
+  ProfileSection,
+  ProfileSkeleton,
+} from "../components/profile/ProfileBlocks";
+
+const NAV_ITEMS = [
+  { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+  { label: "Profile", icon: UserRound, to: "/faculty-profile", active: true },
+];
+
+const UPCOMING_ITEMS = [
+  { label: "Assignments", icon: ClipboardList },
+  { label: "Attendance", icon: CalendarCheck },
+  { label: "Notices", icon: Megaphone },
+];
+
+function hasValue(value) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
+}
+
+function formatRole(role) {
+  if (!role) {
+    return "Faculty";
+  }
+
+  return role.charAt(0) + role.slice(1).toLowerCase();
+}
 
 const FacultyProfile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
@@ -43,13 +87,16 @@ const FacultyProfile = () => {
 
         if (!cancelled) {
           setProfile({
-            name: data.full_name || user.name || "N/A",
-            employeeId: data.employeeId || "N/A",
-            designation: data.designation || "N/A",
-            email: data.email || "N/A",
-            department: data.department?.dept_name || "N/A",
+            name: data.full_name || user.name || "Faculty",
+            employeeId: data.employeeId || "",
+            designation: data.designation || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            department: data.department?.dept_name || "",
+            departmentCode: data.department?.dept_code || "",
             role: data.role || user.role || "FACULTY",
             profilePhoto: data.photo_url || null,
+            accountStatus: Boolean(data.accountStatus),
           });
         }
       } catch (err) {
@@ -72,152 +119,130 @@ const FacultyProfile = () => {
     };
   }, [user]);
 
-  if (loading) {
+  const displayName = profile?.name || user?.name || "Faculty";
+
+  function renderContent() {
+    if (loading) {
+      return <ProfileSkeleton />;
+    }
+
+    if (error || !profile) {
+      return (
+        <ProfileError
+          message={error || "Profile unavailable."}
+          action={
+            <button
+              type="button"
+              className="pf-btn pf-btn-primary"
+              onClick={() => navigate("/dashboard")}
+            >
+              <LayoutDashboard size={16} strokeWidth={2} aria-hidden="true" />
+              Back to Dashboard
+            </button>
+          }
+        />
+      );
+    }
+
+    const departmentLabel = profile.departmentCode
+      ? `${profile.department} (${profile.departmentCode})`
+      : profile.department;
+
+    const facts = [
+      { label: "Employee ID", value: profile.employeeId },
+      { label: "Department", value: profile.department },
+      { label: "Designation", value: profile.designation },
+    ].filter((fact) => hasValue(fact.value));
+
+    const professionalFields = [
+      { label: "Employee ID", value: profile.employeeId, icon: IdCard },
+      { label: "Department", value: departmentLabel, icon: Building2 },
+      { label: "Designation", value: profile.designation, icon: BriefcaseBusiness },
+      { label: "Role", value: formatRole(profile.role), icon: ShieldCheck },
+    ].filter((field) => hasValue(field.value));
+
+    const contactFields = [
+      { label: "Full name", value: profile.name, icon: UserRound },
+      hasValue(profile.email)
+        ? {
+            label: "Email",
+            value: <a href={`mailto:${profile.email}`}>{profile.email}</a>,
+            icon: Mail,
+            wrap: true,
+          }
+        : null,
+      hasValue(profile.phone)
+        ? {
+            label: "Phone",
+            value: <a href={`tel:${profile.phone}`}>{profile.phone}</a>,
+            icon: Phone,
+          }
+        : null,
+    ].filter(Boolean);
+
     return (
-      <div className="faculty-page">
-        <div className="profile-container">
-          <p>Loading faculty profile...</p>
+      <>
+        <ProfileHero
+          name={profile.name}
+          roleLabel={formatRole(profile.role)}
+          photoUrl={profile.profilePhoto}
+          isActive={profile.accountStatus}
+          facts={facts}
+          actions={
+            <>
+              <button
+                type="button"
+                className="pf-btn pf-btn-secondary"
+                onClick={() => navigate("/reset-password")}
+              >
+                <KeyRound size={16} strokeWidth={2} aria-hidden="true" />
+                Change Password
+              </button>
+              <button
+                type="button"
+                className="pf-btn pf-btn-secondary"
+                disabled
+                title="Profile editing is coming soon"
+              >
+                <PencilLine size={16} strokeWidth={2} aria-hidden="true" />
+                Edit Profile
+              </button>
+            </>
+          }
+        />
+
+        <div className="pf-grid">
+          <ProfileSection
+            id="pf-professional"
+            title="Professional information"
+            description="Your appointment details on record with the institution."
+            icon={BriefcaseBusiness}
+            fields={professionalFields}
+          />
+          <ProfileSection
+            id="pf-contact"
+            title="Contact information"
+            description="How students and staff can reach you."
+            icon={Mail}
+            fields={contactFields}
+          />
         </div>
-      </div>
+      </>
     );
   }
-
-  if (error || !profile) {
-    return (
-      <div className="faculty-page">
-        <div className="profile-container">
-          <p>{error || "Profile unavailable."}</p>
-          <button type="button" className="back-btn" onClick={() => navigate("/dashboard")}>
-            ← <span>Back to Dashboard</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const mailto = profile.email && profile.email !== "N/A" ? `mailto:${profile.email}` : undefined;
 
   return (
-    <div className="faculty-page">
-      <div className="profile-container">
-        {/* ================= HEADER ================= */}
-        <div className="profile-header">
-          {/* Back Button */}
-          <button type="button" className="back-btn" onClick={() => navigate("/dashboard")}>
-            ← <span>Back to Dashboard</span>
-          </button>
-
-          {/* Change Password */}
-          <button
-            type="button"
-            className="password-btn"
-            onClick={() => navigate("/reset-password")}
-          >
-            🔒 Change Password
-          </button>
-
-          {/* Profile Section */}
-          <div className="profile-intro">
-            {/* Avatar */}
-            <div className="avatar">
-              <div className="avatar-face">
-                {profile.profilePhoto ? (
-                  <img src={profile.profilePhoto} alt={profile.name} />
-                ) : (
-                  "👩🏻‍🏫"
-                )}
-              </div>
-            </div>
-
-            <div className="profile-main-info">
-              {/* Edit Profile */}
-              <button type="button" className="edit-btn">
-                ✎ &nbsp; Edit Profile
-              </button>
-
-              <h1>
-                <span className="user-icon">👤</span>
-                {profile.name}
-              </h1>
-
-              <h3>{profile.designation}</h3>
-
-              <div className="header-details">
-                <span>🎓 &nbsp; {profile.department}</span>
-
-                <span>
-                  ✉ &nbsp;
-                  {mailto ? <a href={mailto}>{profile.email}</a> : profile.email}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ================= INFORMATION CARDS ================= */}
-        <div className="info-grid">
-          {/* Full Name */}
-          <div className="info-card">
-            <div className="card-icon">👤</div>
-
-            <div className="card-content">
-              <p>Full Name</p>
-              <h3>{profile.name}</h3>
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="info-card">
-            <div className="card-icon">✉</div>
-
-            <div className="card-content">
-              <p>Email</p>
-              <h3>{mailto ? <a href={mailto}>{profile.email}</a> : profile.email}</h3>
-            </div>
-          </div>
-
-          {/* Employee ID */}
-          <div className="info-card">
-            <div className="card-icon">🪪</div>
-
-            <div className="card-content">
-              <p>Employee ID</p>
-              <h3>{profile.employeeId}</h3>
-            </div>
-          </div>
-
-          {/* Department */}
-          <div className="info-card">
-            <div className="card-icon">🎓</div>
-
-            <div className="card-content">
-              <p>Department</p>
-              <h3>{profile.department}</h3>
-            </div>
-          </div>
-
-          {/* Designation */}
-          <div className="info-card">
-            <div className="card-icon">🎓</div>
-
-            <div className="card-content">
-              <p>Designation</p>
-              <h3>{profile.designation}</h3>
-            </div>
-          </div>
-
-          {/* Role */}
-          <div className="info-card">
-            <div className="card-icon">👥</div>
-
-            <div className="card-content">
-              <p>Role</p>
-              <h3>{profile.role}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ProfileLayout
+      portalLabel="Faculty Portal"
+      name={displayName}
+      subtitle={profile?.designation || "Faculty"}
+      photoUrl={profile?.profilePhoto || null}
+      navItems={NAV_ITEMS}
+      upcomingItems={UPCOMING_ITEMS}
+      onLogout={logout}
+    >
+      {renderContent()}
+    </ProfileLayout>
   );
 };
 
