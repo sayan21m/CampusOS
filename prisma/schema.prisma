@@ -19,6 +19,7 @@ model User {
   createdAt           DateTime  @default(now())
 
   passwordResetTokens passwordResetToken[]
+  notices             Notice[]
 
   student Student?
   faculty Faculty?
@@ -141,4 +142,23 @@ model Submission {
   @@unique([assignment_id, student_id])
   @@index([assignment_id])
   @@index([student_id])
+}
+
+model Notice {
+  notice_id      Int      @id @default(autoincrement())
+  created_by     Int
+  title          String
+  content        String
+  category       String
+  priority       String
+  target_type    String
+  target_value   String
+  attachment_url String?
+  created_at     DateTime @default(now())
+
+  user User @relation(fields: [created_by], references: [user_id], onDelete: Cascade)
+
+  @@index([created_by])
+  @@index([target_type, target_value])
+  @@index([created_at])
 }
