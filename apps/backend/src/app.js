@@ -11,6 +11,7 @@ import facultyRoutes from "./routes/faculty.routes.js";
 import subjectRoutes from "./routes/subject.routes.js";
 import assignmentRoutes from "./routes/assignment.routes.js";
 import submissionRoutes from "./routes/submission.routes.js";
+import noticeRoutes from "./routes/notice.routes.js";
 
 import cors from "cors";
 
@@ -34,6 +35,7 @@ app.use("/api/v1/faculty", facultyRoutes);
 app.use("/api/v1/subjects", subjectRoutes);
 app.use("/api/v1/assignments", assignmentRoutes);
 app.use("/api/v1/submissions", submissionRoutes);
+app.use("/api/v1/notices", noticeRoutes);
 
 app.use(handleUploadError);
 
