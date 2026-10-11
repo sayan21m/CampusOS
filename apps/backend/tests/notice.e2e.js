@@ -503,10 +503,7 @@ async function runTests() {
     );
 
     console.log("Create Section Notice (admin):", sectionNoticeResponse.status);
-    assert(
-      sectionNoticeResponse.status === 201,
-      "Admin section-notice creation should return 201"
-    );
+    assert(sectionNoticeResponse.status === 201, "Admin section-notice creation should return 201");
 
     const sectionNotice = sectionNoticeResponse.data.notice;
     createdNoticeIds.push(sectionNotice.notice_id);
