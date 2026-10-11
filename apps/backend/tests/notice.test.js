@@ -103,7 +103,7 @@ describe("Notice module", () => {
 
   describe("createNotice()", () => {
     test("admin creates an all notice and stores target_value as ALL", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.notice.create.mockResolvedValue(
         createdNotice({ created_by: 1, target_type: "all", target_value: "ALL" })
       );
@@ -147,7 +147,7 @@ describe("Notice module", () => {
     });
 
     test("admin creates a department notice for an existing department", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.department.findUnique.mockResolvedValue({ dept_id: 3, dept_name: "CSE" });
       mockPrisma.notice.create.mockResolvedValue(
         createdNotice({
@@ -195,7 +195,7 @@ describe("Notice module", () => {
     });
 
     test("admin creates year notices for years 1 through 4", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
 
       for (const year of [1, 2, 3, 4]) {
         mockPrisma.notice.create.mockResolvedValueOnce(
@@ -223,7 +223,7 @@ describe("Notice module", () => {
     });
 
     test("admin creates a section notice and normalizes target_value", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.department.findUnique.mockResolvedValue({ dept_id: 3 });
       mockPrisma.notice.create.mockResolvedValue(
         createdNotice({
@@ -286,7 +286,7 @@ describe("Notice module", () => {
     });
 
     test("invalid department id returns 400", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
 
       await expectStatus(
         createNotice(baseNoticeInput({ target_type: "dept", target_value: "0" }), 1),
@@ -303,7 +303,7 @@ describe("Notice module", () => {
     });
 
     test("nonexistent department returns 404", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.department.findUnique.mockResolvedValue(null);
 
       await expectStatus(
@@ -335,7 +335,7 @@ describe("Notice module", () => {
     });
 
     test("invalid years return 400", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
 
       for (const value of ["0", "5", "1.5", "freshman"]) {
         await expectStatus(
@@ -346,7 +346,7 @@ describe("Notice module", () => {
     });
 
     test("malformed section formats are rejected", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
 
       for (const value of ["3", "3:A:B", "0:A", "3:"]) {
         await expectStatus(
@@ -357,7 +357,7 @@ describe("Notice module", () => {
     });
 
     test("nonexistent section-target department returns 404", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.department.findUnique.mockResolvedValue(null);
 
       await expectStatus(
@@ -380,7 +380,7 @@ describe("Notice module", () => {
 
   describe("getNotice()", () => {
     test("admin receives all notices including all target types", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       const notices = [
         createdNotice({
           notice_id: 1,
@@ -422,7 +422,7 @@ describe("Notice module", () => {
     });
 
     test("admin results are ordered by priority then newest first", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.notice.findMany.mockResolvedValue([
         createdNotice({
           notice_id: 1,
@@ -613,7 +613,7 @@ describe("Notice module", () => {
     });
 
     test("unsupported role returns 403", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 4, role: "ADMINISTRATOR" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 4, role: "GUEST" });
 
       await expectStatus(getNotice(4), 403);
     });
@@ -625,7 +625,7 @@ describe("Notice module", () => {
     });
 
     test("equal-priority notices are ordered newest first", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMINISTRATOR" });
       mockPrisma.notice.findMany.mockResolvedValue([
         createdNotice({
           notice_id: 1,
@@ -652,7 +652,7 @@ describe("Notice module", () => {
 
   describe("controllers", () => {
     test("createNoticeController returns 201 with created notice", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 10, role: "ADMIN" });
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 10, role: "ADMINISTRATOR" });
       mockPrisma.notice.create.mockResolvedValue(
         createdNotice({
           notice_id: 1,
@@ -667,8 +667,8 @@ describe("Notice module", () => {
       );
 
       const req = {
-        user: { userId: 10, role: "ADMIN" },
-        data: {
+        user: { userId: 10, role: "ADMINISTRATOR" },
+        body: {
           title: "Holiday",
           content: "Campus closed",
           category: "holiday",
@@ -699,7 +699,7 @@ describe("Notice module", () => {
 
       const req = {
         user: { userId: 2, role: "FACULTY" },
-        data: {
+        body: {
           title: "Dept note",
           content: "Content",
           category: "academic",
@@ -775,7 +775,7 @@ describe("Notice module", () => {
     test("controllers default unknown errors to 500", async () => {
       mockPrisma.user.findUnique.mockRejectedValue(new Error("Unexpected failure"));
 
-      const req = { user: { userId: 1, role: "ADMIN" } };
+      const req = { user: { userId: 1, role: "ADMINISTRATOR" } };
       const res = mockResponse();
 
       await getNoticeController(req, res);
@@ -816,7 +816,7 @@ describe("Notice module", () => {
       const req = { user: { userId: 3, role: "STUDENT" } };
       const res = mockResponse();
 
-      runMiddleware(authorize("ADMIN", "FACULTY"), req, res);
+      runMiddleware(authorize("ADMINISTRATOR", "FACULTY"), req, res);
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({ message: "Access denied" });
@@ -826,17 +826,17 @@ describe("Notice module", () => {
       const req = {};
       const res = mockResponse();
 
-      runMiddleware(authorize("ADMIN", "FACULTY"), req, res);
+      runMiddleware(authorize("ADMINISTRATOR", "FACULTY"), req, res);
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({ message: "Authentication required" });
     });
 
     test("admin and faculty are authorized to create notices", () => {
-      for (const role of ["ADMIN", "FACULTY"]) {
+      for (const role of ["ADMINISTRATOR", "FACULTY"]) {
         const req = { user: { userId: 1, role } };
         const res = mockResponse();
-        const outcome = runMiddleware(authorize("ADMIN", "FACULTY"), req, res);
+        const outcome = runMiddleware(authorize("ADMINISTRATOR", "FACULTY"), req, res);
 
         expect(outcome.next).toBe(true);
         expect(res.status).not.toHaveBeenCalled();

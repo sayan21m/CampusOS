@@ -10,7 +10,7 @@ const router = express.Router();
 router.post(
   "/",
   authenticate,
-  authorize("ADMIN", "FACULTY"),
+    authorize("ADMINISTRATOR", "FACULTY"),
   validate(createNoticeSchema),
   createNoticeController
 );

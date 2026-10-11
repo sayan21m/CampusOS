@@ -3,7 +3,7 @@ import { createNotice, getNotice } from "../services/notice.service.js";
 export async function createNoticeController(req, res) {
   try {
     const user_id = req.user.userId;
-    const notice = await createNotice(req.data, user_id);
+        const notice = await createNotice(req.body, user_id);
 
     return res.status(201).json({
       message: "Notice created successfully",
