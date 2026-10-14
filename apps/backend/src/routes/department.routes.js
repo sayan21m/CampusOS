@@ -18,7 +18,7 @@ const router = express.Router();
 router.post(
   "/",
   authenticate,
-  authorize("ADMINISTRATOR"),
+  authorize("ADMIN"),
   validate(createDepartmentSchema),
   createDepartmentController
 );
@@ -27,7 +27,7 @@ router.get("/:id", authenticate, getDepartmentByIdController);
 router.patch(
   "/:id",
   authenticate,
-  authorize("ADMINISTRATOR"),
+  authorize("ADMIN"),
   validate(updateDepartmentSchema),
   updateDepartmentController
 );
