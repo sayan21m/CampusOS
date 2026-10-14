@@ -74,7 +74,27 @@ async function getAdminToken(testId) {
   const envPassword = process.env.E2E_ADMIN_PASSWORD;
 
   if (envEmail && envPassword) {
-    const loginResponse = await request("POST", "/auth/login", {
+    let loginResponse = await request("POST", "/auth/login", {
+      email: envEmail,
+      password: envPassword,
+    });
+
+    if (loginResponse.status === 200) {
+      return {
+        token: loginResponse.data.result.token,
+        ephemeralAdminEmail: null,
+      };
+    }
+
+    // Ensure the configured admin exists with role ADMIN, then retry login.
+    await createTemporaryUser({
+      email: envEmail,
+      name: "E2E Admin",
+      role: "ADMIN",
+      password: envPassword,
+    });
+
+    loginResponse = await request("POST", "/auth/login", {
       email: envEmail,
       password: envPassword,
     });
@@ -95,7 +115,7 @@ async function getAdminToken(testId) {
   await createTemporaryUser({
     email,
     name: "E2E Subject Admin",
-    role: "ADMINISTRATOR",
+    role: "ADMIN",
     password,
   });
 
