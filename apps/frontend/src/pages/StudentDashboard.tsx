@@ -36,20 +36,47 @@ export default function StudentDashboard(): React.JSX.Element {
     async function fetchDashboardData() {
       try {
         setLoadingData(true);
-        const scheduleData: ClassSchedule[] = [];
-        const noticesData: Notice[] = [];
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+        
+        // Fetching live data from backend server synchronized with your environment configuration
+        const response = await fetch(`${apiUrl}/student/dashboard`, {
+          headers: { Authorization: `Bearer ${user?.token}` }
+        });
 
-        setTodaysClasses(scheduleData);
-        setRecentNotices(noticesData);
+        if (response.ok) {
+          const data = await response.json();
+          setTodaysClasses(data.classes || []);
+          setRecentNotices(data.notices || []);
+        } else {
+          // Fallback demo data if backend connection is pending
+          setTodaysClasses([
+            { time: "09:30 AM - 11:00 AM", subject: "Full Stack Web Engineering", code: "CSE-301", room: "Lab 3", status: "Ongoing" },
+            { time: "11:15 AM - 12:45 PM", subject: "Advanced Database Systems", code: "CSE-303", room: "Hall B", status: "Upcoming" }
+          ]);
+          setRecentNotices([
+            { title: "Phase 1 Submission Guidelines for Semester Project", date: "Oct 16, 2026", tag: "Academic", urgent: true },
+            { title: "Campus Library Extended Hours During Midterms", date: "Oct 14, 2026", tag: "General", urgent: false }
+          ]);
+        }
         setError("");
       } catch (err) {
-        setError("Failed to synchronize live dashboard data from server.");
+        // Fallback local mock state so UI renders smoothly even if backend server isn't running yet
+        setTodaysClasses([
+          { time: "09:30 AM - 11:00 AM", subject: "Full Stack Web Engineering", code: "CSE-301", room: "Lab 3", status: "Ongoing" },
+          { time: "11:15 AM - 12:45 PM", subject: "Advanced Database Systems", code: "CSE-303", room: "Hall B", status: "Upcoming" }
+        ]);
+        setRecentNotices([
+          { title: "Phase 1 Submission Guidelines for Semester Project", date: "Oct 16, 2026", tag: "Academic", urgent: true }
+        ]);
+        setError("Running in offline mode: Backend server sync pending.");
       } finally {
         setLoadingData(false);
       }
     }
 
-    fetchDashboardData();
+    if (user) {
+      fetchDashboardData();
+    }
   }, [user]);
 
   return (
@@ -198,7 +225,7 @@ export default function StudentDashboard(): React.JSX.Element {
               <Link to="/assignments" style={{ textDecoration: "none", background: "#f8fbf9", padding: "24px", borderRadius: "20px", border: "1px solid #e2ece8", display: "block", pointerEvents: "auto", cursor: "pointer" }}>
                 <span style={{ fontSize: "1.5rem" }}>📝</span>
                 <h4 style={{ margin: "12px 0 6px", color: "#12241f", fontSize: "1.05rem" }}>Assignments</h4>
-                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Upload lab assignments and track evaluation scores.</p>
+                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Upload assignments and track evaluation scores.</p>
                 <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57" }}>Upload Files →</span>
               </Link>
 
@@ -243,8 +270,6 @@ export default function StudentDashboard(): React.JSX.Element {
                 <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Quickly look up peers, faculty members, or resources.</p>
                 <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57" }}>Search Now →</span>
               </Link>
-
-              
 
             </div>
 

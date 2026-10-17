@@ -6,6 +6,7 @@ import ForgotPassword from "./pages/forgotpass";
 import ResetPassword from "./pages/ResetPassword";
 import StudentProfile from "./pages/student_prof";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentAssignments from "./pages/StudentAssignments";
 
 // Inline placeholder component for Phase 1 modules to ensure seamless same-tab rendering
 function ModulePlaceholder({ title }) {
@@ -51,8 +52,8 @@ function App() {
 
       {/* Phase 1 Modules & Profile (All open in the same tab) */}
       <Route path="/student_prof" element={<StudentProfile />} />
+      <Route path="/assignments" element={<StudentAssignments />} />
       <Route path="/timetable" element={<ModulePlaceholder title="Timetable" />} />
-      <Route path="/assignments" element={<ModulePlaceholder title="Assignments" />} />
       <Route path="/notes" element={<ModulePlaceholder title="Notes & LMS" />} />
       <Route path="/notices" element={<ModulePlaceholder title="Notices" />} />
       <Route path="/attendance" element={<ModulePlaceholder title="Attendance" />} />
