@@ -9,6 +9,7 @@ import FacultyProfile from "./pages/faculty_profile";
 import StudentProfile from "./pages/student_prof";
 import StudentDashboard from "./pages/StudentDashboard";
 import FacultyDashboard from "./pages/faculty_dashboard";
+import AdminProfile from "./pages/admin-profile";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -70,7 +71,16 @@ function App() {
           </ProtectedRoute>
         }
       />
-      
+
+    
+       <Route
+        path="/admin-profile"
+        element={
+          <ProtectedRoute>
+            <AdminProfile />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="/faculty_profile" element={<Navigate to="/faculty-profile" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
