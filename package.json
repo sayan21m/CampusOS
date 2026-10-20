@@ -31,11 +31,15 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --passWithNoTests",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --passWithNoTests",
     "test:watch:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --coverage --passWithNoTests",
+    "test:e2e": "node apps/backend/tests/faculty.e2e.js && node apps/backend/tests/profile.e2e.js && node apps/backend/tests/subject.e2e.js && node apps/backend/tests/assignment.e2e.js && node apps/backend/tests/submission.e2e.js && node apps/backend/tests/notice.e2e.js && node apps/backend/tests/timetable.e2e.js && node apps/backend/tests/notes.e2e.js",
+    "test:e2e:timetable": "node apps/backend/tests/timetable.e2e.js",
+    "test:e2e:notes": "node apps/backend/tests/notes.e2e.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate || exit 0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/multer": "^2.3.0",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
     "jest": "^30.5.2",
@@ -46,11 +50,13 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "adm-zip": "^0.6.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
     "pg": "^8.23.0",
     "resend": "^6.30.0",
     "zod": "^4.6.5"

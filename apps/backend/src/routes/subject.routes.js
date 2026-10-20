@@ -10,7 +10,7 @@ const router = express.Router();
 router.post(
   "/",
   authenticate,
-  authorize("ADMINISTRATOR"),
+  authorize("ADMIN"),
   validate(createSubjectSchema),
   createSubjectController
 );

@@ -1,189 +1,256 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  BookOpen,
+  CalendarDays,
+  CalendarRange,
+  GraduationCap,
+  Hash,
+  LayoutDashboard,
+  Layers,
+  Mail,
+  Megaphone,
+  Percent,
+  Phone,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import "./Login.css"; 
+import api from "../services/api";
+import ProfileLayout from "../components/profile/ProfileLayout";
+import type { ProfileNavItem } from "../components/profile/ProfileLayout";
+import {
+  ProfileError,
+  ProfileHero,
+  ProfileSection,
+  ProfileSkeleton,
+} from "../components/profile/ProfileBlocks";
+import type { ProfileFact, ProfileField } from "../components/profile/ProfileBlocks";
 
 interface StudentProfileData {
   name: string;
   rollNumber: string;
-  branch: string;
-  semester: string | number;
+  department: string;
+  departmentCode: string;
+  semester: string | number | null;
   section: string;
+  admissionYear: string | number | null;
   email: string;
   phone: string;
-  profilePhoto?: string;
-  academicSummary: {
-    attendancePercentage: number;
-    assignmentsSubmitted: number;
-    totalAssignments: number;
-  };
+  profilePhoto?: string | null;
+  accountStatus: boolean;
+}
+
+const NAV_ITEMS: ProfileNavItem[] = [
+  { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
+  { label: "Profile", icon: UserRound, to: "/student-profile", active: true },
+];
+
+const UPCOMING_ITEMS: ProfileNavItem[] = [
+  { label: "Attendance", icon: Percent },
+  { label: "Timetable", icon: CalendarDays },
+  { label: "Study materials", icon: BookOpen },
+  { label: "Notices", icon: Megaphone },
+];
+
+function hasValue(value: unknown): boolean {
+  return value !== null && value !== undefined && String(value).trim() !== "";
 }
 
 export default function StudentProfile(): React.JSX.Element {
-  const { user } = useAuth() as { user: any };
-  
+  const { user, logout } = useAuth() as {
+    user: { role?: string; name?: string } | null;
+    logout: () => void;
+  };
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<StudentProfileData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    function fetchProfileData() {
+    let cancelled = false;
+
+    async function fetchProfileData() {
       try {
         setLoading(true);
-        if (user) {
-          setProfile({
-            name: user.name || "N/A",
-            rollNumber: user.rollNumber || user.id || "N/A",
-            branch: user.branch || "N/A",
-            semester: user.semester || "N/A",
-            section: user.section || "N/A",
-            email: user.email || "N/A",
-            phone: user.phone || "N/A",
-            profilePhoto: user.profilePhoto,
-            academicSummary: {
-              attendancePercentage: user.attendancePercentage || 85.0,
-              assignmentsSubmitted: user.assignmentsSubmitted || 12,
-              totalAssignments: user.totalAssignments || 15,
-            },
-          });
-          setError("");
-        } else {
+        setError("");
+
+        if (!user) {
           setError("No active session detected.");
+          setProfile(null);
+          return;
         }
-      } catch (err) {
-        setError("Failed to load student profile details.");
+
+        if (user.role && user.role !== "STUDENT") {
+          setError("Student profile is only available for student accounts.");
+          setProfile(null);
+          return;
+        }
+
+        const response = await api.get("/profile");
+        const data = response.data?.profile;
+
+        if (!data) {
+          setError("Profile unavailable.");
+          setProfile(null);
+          return;
+        }
+
+        if (!cancelled) {
+          setProfile({
+            name: data.full_name || user.name || "Student",
+            rollNumber: data.roll_number || "",
+            department: data.department?.dept_name || "",
+            departmentCode: data.department?.dept_code || "",
+            semester: data.semester ?? null,
+            section: data.section || "",
+            admissionYear: data.admission_year ?? null,
+            email: data.email || "",
+            phone: data.phone || "",
+            profilePhoto: data.photo_url || null,
+            accountStatus: Boolean(data.accountStatus),
+          });
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const message =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            "Failed to load student profile details.";
+          setError(message);
+          setProfile(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
+
     fetchProfileData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#09382e", color: "#fff", fontFamily: "inherit" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ fontWeight: 600, letterSpacing: "0.05em" }}>Loading CampusOS Space...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
+  const displayName = profile?.name || user?.name || "Student";
 
-  if (error || !profile) {
+  function renderContent(): React.ReactNode {
+    if (loading) {
+      return <ProfileSkeleton />;
+    }
+
+    if (error || !profile) {
+      return (
+        <ProfileError
+          message={error || "Profile unavailable."}
+          action={
+            <button
+              type="button"
+              className="pf-btn pf-btn-primary"
+              onClick={() => navigate("/dashboard")}
+            >
+              <LayoutDashboard size={16} strokeWidth={2} aria-hidden="true" />
+              Back to dashboard
+            </button>
+          }
+        />
+      );
+    }
+
+    const departmentLabel = profile.departmentCode
+      ? `${profile.department} (${profile.departmentCode})`
+      : profile.department;
+
+    const facts: ProfileFact[] = [
+      { label: "Roll number", value: profile.rollNumber },
+      { label: "Department", value: profile.department },
+      { label: "Semester", value: profile.semester },
+      { label: "Section", value: profile.section },
+    ].filter((fact) => hasValue(fact.value));
+
+    const academicFields: ProfileField[] = [
+      { label: "Roll number", value: profile.rollNumber, icon: Hash },
+      { label: "Department", value: departmentLabel, icon: GraduationCap },
+      { label: "Semester", value: profile.semester, icon: Layers },
+      { label: "Section", value: profile.section, icon: Users },
+      { label: "Admission year", value: profile.admissionYear, icon: CalendarRange },
+    ].filter((field) => hasValue(field.value));
+
+    const personalFieldCandidates: Array<ProfileField | null> = [
+      { label: "Full name", value: profile.name, icon: UserRound },
+      hasValue(profile.email)
+        ? {
+            label: "Email",
+            value: <a href={`mailto:${profile.email}`}>{profile.email}</a>,
+            icon: Mail,
+            wrap: true,
+          }
+        : null,
+      hasValue(profile.phone)
+        ? {
+            label: "Phone",
+            value: <a href={`tel:${profile.phone}`}>{profile.phone}</a>,
+            icon: Phone,
+          }
+        : null,
+    ];
+    const personalFields = personalFieldCandidates.filter(
+      (field): field is ProfileField => field !== null
+    );
+
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f4f7f6" }}>
-        <p style={{ color: "#9f2d22", background: "#fff1f0", padding: "16px 24px", borderRadius: "12px", fontWeight: 600 }}>⚠️ {error || "Profile unavailable."}</p>
-      </div>
+      <>
+        <ProfileHero
+          name={profile.name}
+          roleLabel="Student"
+          photoUrl={profile.profilePhoto || null}
+          isActive={profile.accountStatus}
+          facts={facts}
+          actions={
+            <button
+              type="button"
+              className="pf-btn pf-btn-secondary"
+              onClick={() => navigate("/dashboard")}
+            >
+              <LayoutDashboard size={16} strokeWidth={2} aria-hidden="true" />
+              Dashboard
+            </button>
+          }
+        />
+
+        <div className="pf-grid">
+          <ProfileSection
+            id="pf-academic"
+            title="Academic information"
+            description="Your enrollment details on record with the institution."
+            icon={GraduationCap}
+            fields={academicFields}
+          />
+          <ProfileSection
+            id="pf-personal"
+            title="Personal information"
+            description="Contact details linked to your CampusOS account."
+            icon={UserRound}
+            fields={personalFields}
+          />
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #06241e 0%, #09382e 50%, #0f6b57 100%)", padding: "40px 20px", fontFamily: "inherit" }}>
-      <main style={{ maxWidth: "880px", margin: "0 auto", width: "100%" }}>
-        
-        {/* Main Floating Glass Shell */}
-        <div style={{ background: "rgba(255, 255, 255, 0.96)", backdropFilter: "blur(20px)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(4, 28, 22, 0.4)", overflow: "hidden", border: "1px solid rgba(255, 255, 255, 0.4)" }}>
-          
-          {/* Dynamic Header Block */}
-          <div style={{ background: "linear-gradient(135deg, #09382e 0%, #0f6b57 100%)", padding: "48px 40px 40px", color: "#ffffff", display: "flex", alignItems: "center", gap: "32px", flexWrap: "wrap", position: "relative" }}>
-            
-            <div style={{ position: "absolute", top: "-60px", right: "-60px", width: "220px", height: "220px", background: "radial-gradient(circle, rgba(46, 204, 113, 0.25) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-            
-            <div style={{ width: "110px", height: "110px", borderRadius: "50%", background: "rgba(255, 255, 255, 0.15)", display: "grid", placeItems: "center", overflow: "hidden", border: "4px solid rgba(255, 255, 255, 0.4)", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", flexShrink: 0, position: "relative" }}>
-              {profile.profilePhoto ? (
-                <img src={profile.profilePhoto} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <span style={{ fontSize: "3rem" }}>👨‍🎓</span>
-              )}
-            </div>
-
-            <div style={{ flex: 1, minWidth: "240px", zIndex: 1 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255, 255, 255, 0.18)", padding: "6px 14px", borderRadius: "30px", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.06em", marginBottom: "12px", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                <span>🟢</span> ACTIVE INSTITUTIONAL SESSION
-              </div>
-              <h1 style={{ margin: "0 0 6px", fontSize: "2.5rem", fontWeight: 800, letterSpacing: "-0.03em", textShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>{profile.name}</h1>
-              <p style={{ margin: 0, color: "#b6ded3", fontSize: "1rem", fontWeight: 500, display: "flex", gap: "12px", alignItems: "center" }}>
-                <span>Roll ID: <strong style={{ color: "#fff" }}>{profile.rollNumber}</strong></span>
-                <span style={{ opacity: 0.5 }}>•</span>
-                <span>CampusOS v2.6</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Interactive Core Body */}
-          <div style={{ padding: "40px" }}>
-            
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800, letterSpacing: "-0.01em" }}>⚡ Academic Particulars</h3>
-              <span style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, background: "#e8f3ef", padding: "6px 12px", borderRadius: "10px" }}>Verified Record</span>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "40px" }}>
-              
-              <div style={{ background: "#f8fbf9", padding: "18px 20px", borderRadius: "16px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6a827b", fontWeight: 700, display: "block", marginBottom: "6px" }}>Branch of Study</span>
-                <span style={{ fontSize: "1rem", color: "#12241f", fontWeight: 700 }}>{profile.branch}</span>
-              </div>
-
-              <div style={{ background: "#f8fbf9", padding: "18px 20px", borderRadius: "16px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6a827b", fontWeight: 700, display: "block", marginBottom: "6px" }}>Current Semester</span>
-                <span style={{ fontSize: "1rem", color: "#12241f", fontWeight: 700 }}>{profile.semester}</span>
-              </div>
-
-              <div style={{ background: "#f8fbf9", padding: "18px 20px", borderRadius: "16px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6a827b", fontWeight: 700, display: "block", marginBottom: "6px" }}>Class Section</span>
-                <span style={{ fontSize: "1rem", color: "#12241f", fontWeight: 700 }}>{profile.section}</span>
-              </div>
-
-              <div style={{ background: "#f8fbf9", padding: "18px 20px", borderRadius: "16px", border: "1px solid #e2ece8" }}>
-                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6a827b", fontWeight: 700, display: "block", marginBottom: "6px" }}>Institutional Email</span>
-                <span style={{ fontSize: "0.95rem", color: "#12241f", fontWeight: 700, wordBreak: "break-all" }}>{profile.email}</span>
-              </div>
-
-              <div style={{ background: "#f8fbf9", padding: "18px 20px", borderRadius: "16px", border: "1px solid #e2ece8", gridColumn: "1 / -1" }}>
-                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6a827b", fontWeight: 700, display: "block", marginBottom: "6px" }}>Verified Phone Contact</span>
-                <span style={{ fontSize: "1rem", color: "#12241f", fontWeight: 700 }}>{profile.phone}</span>
-              </div>
-
-            </div>
-
-            {/* High-Impact Analytics Widget */}
-            <div style={{ background: "linear-gradient(135deg, #e8f3ef 0%, #d5eade 100%)", padding: "28px 32px", borderRadius: "20px", border: "1px solid #bedad2" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, color: "#09382e", fontSize: "1.1rem", fontWeight: 800 }}>
-                  📊 Real-Time Academic Pulse
-                </h3>
-                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f6b57", background: "#fff", padding: "4px 10px", borderRadius: "6px", boxShadow: "0 2px 4px rgba(0,0,0,0.04)" }}>Live Sync</span>
-              </div>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
-                
-                <div style={{ background: "#ffffff", padding: "22px 24px", borderRadius: "16px", boxShadow: "0 4px 16px rgba(15, 107, 87, 0.06)", border: "1px solid #d1e5df" }}>
-                  <span style={{ fontSize: "0.82rem", color: "#4d625c", display: "block", marginBottom: "8px", fontWeight: 700 }}>Attendance Rate</span>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "2rem", fontWeight: 900, color: "#0f6b57" }}>{profile.academicSummary.attendancePercentage}%</span>
-                    <span style={{ fontSize: "0.78rem", background: "#e1f5fe", color: "#0288d1", padding: "2px 8px", borderRadius: "6px", fontWeight: 700 }}>Optimal</span>
-                  </div>
-                </div>
-
-                <div style={{ background: "#ffffff", padding: "22px 24px", borderRadius: "16px", boxShadow: "0 4px 16px rgba(15, 107, 87, 0.06)", border: "1px solid #d1e5df" }}>
-                  <span style={{ fontSize: "0.82rem", color: "#4d625c", display: "block", marginBottom: "8px", fontWeight: 700 }}>Assignments Cleared</span>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "2rem", fontWeight: 900, color: "#12241f" }}>
-                      {profile.academicSummary.assignmentsSubmitted} <span style={{ fontSize: "1.1rem", color: "#7d938c", fontWeight: 600 }}>/ {profile.academicSummary.totalAssignments}</span>
-                    </span>
-                    <span style={{ fontSize: "0.78rem", background: "#e8f8f5", color: "#10b981", padding: "2px 8px", borderRadius: "6px", fontWeight: 700 }}>On Track</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </main>
-    </div>
+    <ProfileLayout
+      portalLabel="Student Portal"
+      name={displayName}
+      subtitle={profile?.rollNumber ? `Roll ${profile.rollNumber}` : "Student"}
+      photoUrl={profile?.profilePhoto || null}
+      navItems={NAV_ITEMS}
+      upcomingItems={UPCOMING_ITEMS}
+      onLogout={logout}
+    >
+      {renderContent()}
+    </ProfileLayout>
   );
 }
