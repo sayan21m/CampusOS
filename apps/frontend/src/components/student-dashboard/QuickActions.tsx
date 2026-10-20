@@ -60,10 +60,10 @@ function QuickAction({ label, icon: Icon, to, onClick }: QuickActionItem): React
 export default function QuickActions({ onViewAssignments }: QuickActionsProps): React.JSX.Element {
   const actions: QuickActionItem[] = [
     { label: "View assignments", icon: ClipboardList, onClick: onViewAssignments },
-    { label: "Submit assignment", icon: Upload },
-    { label: "Study materials", icon: BookOpen },
-    { label: "Notices", icon: Megaphone },
-    { label: "Timetable", icon: CalendarDays },
+    { label: "Submit assignment", icon: Upload, to: "/assignments" },
+    { label: "Study materials", icon: BookOpen, to: "/notes" },
+    { label: "Notices", icon: Megaphone, to: "/notices" },
+    { label: "Timetable", icon: CalendarDays, to: "/timetable" },
     { label: "Profile", icon: UserRound, to: "/student-profile" },
   ];
 

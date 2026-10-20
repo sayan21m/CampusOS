@@ -4,7 +4,7 @@ import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 import { uploadNotesFile } from "../middleware/upload.middleware.js";
 import { notesMetadataSchema, replaceNotesSchema } from "../validators/notes.validator.js";
-import { createNotesController, getNotesController, downloadNotesController, previewNotesController, replaceNotesController, deleteNotesController } from "../controllers/notes.controller.js";
+import { createNotesController, getNotesController, listNotesController, downloadNotesController, previewNotesController, replaceNotesController, deleteNotesController } from "../controllers/notes.controller.js";
 
 const router = express.Router();
 
@@ -15,6 +15,13 @@ router.post(
   uploadNotesFile,
   validate(notesMetadataSchema),
   createNotesController
+);
+
+router.get(
+  "/",
+  authenticate,
+  authorize("FACULTY", "STUDENT"),
+  listNotesController
 );
 
 router.get(

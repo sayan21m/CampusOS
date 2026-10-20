@@ -44,13 +44,10 @@ interface StudentProfileData {
 const NAV_ITEMS: ProfileNavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Profile", icon: UserRound, to: "/student-profile", active: true },
-];
-
-const UPCOMING_ITEMS: ProfileNavItem[] = [
-  { label: "Attendance", icon: Percent },
-  { label: "Timetable", icon: CalendarDays },
-  { label: "Study materials", icon: BookOpen },
-  { label: "Notices", icon: Megaphone },
+  { label: "Timetable", icon: CalendarDays, to: "/timetable" },
+  { label: "Study materials", icon: BookOpen, to: "/notes" },
+  { label: "Notices", icon: Megaphone, to: "/notices" },
+  { label: "Attendance", icon: Percent, to: "/attendance" },
 ];
 
 function hasValue(value: unknown): boolean {
@@ -247,7 +244,6 @@ export default function StudentProfile(): React.JSX.Element {
       subtitle={profile?.rollNumber ? `Roll ${profile.rollNumber}` : "Student"}
       photoUrl={profile?.profilePhoto || null}
       navItems={NAV_ITEMS}
-      upcomingItems={UPCOMING_ITEMS}
       onLogout={logout}
     >
       {renderContent()}

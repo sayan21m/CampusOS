@@ -187,6 +187,13 @@ export async function getNotes(user_id, subject_id, unit_number) {
       file_size_bytes: true,
       created_at: true,
       updated_at: true,
+      subject: {
+        select: {
+          subject_id: true,
+          subject_code: true,
+          subject_name: true,
+        },
+      },
     },
   }).then((notes) =>
     notes.map((note) => ({

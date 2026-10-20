@@ -63,6 +63,31 @@ export async function getNotesController(req, res) {
     }
 }
 
+export async function listNotesController(req, res) {
+  try {
+    const subject_id = req.query.subject_id;
+    const unit_number = req.query.unit_number;
+
+    const notes = await getNotes(
+      req.user.userId,
+      subject_id,
+      unit_number
+    );
+
+    return res.status(200).json({
+      message: "Materials retrieved successfully",
+      count: notes.length,
+      notes,
+    });
+  } catch (error) {
+    console.error("List notes failed:", error);
+
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "Internal server error",
+    });
+  }
+}
+
 function safeDownloadName(title, extension) {
     const safeTitle = title
       .replace(/[\\/:*?"<>|\r\n]/g, "_")

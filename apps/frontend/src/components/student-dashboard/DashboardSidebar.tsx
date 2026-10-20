@@ -19,11 +19,11 @@ interface DashboardSidebarProps {
   onAssignmentsClick: () => void;
 }
 
-const UPCOMING_MODULES: Array<{ label: string; icon: LucideIcon }> = [
-  { label: "Attendance", icon: Percent },
-  { label: "Timetable", icon: CalendarDays },
-  { label: "Study materials", icon: BookOpen },
-  { label: "Notices", icon: Megaphone },
+const ACADEMIC_MODULES: Array<{ label: string; icon: LucideIcon; to: string }> = [
+  { label: "Timetable", icon: CalendarDays, to: "/timetable" },
+  { label: "Study materials", icon: BookOpen, to: "/notes" },
+  { label: "Notices", icon: Megaphone, to: "/notices" },
+  { label: "Attendance", icon: Percent, to: "/attendance" },
 ];
 
 export default function DashboardSidebar({
@@ -79,13 +79,12 @@ export default function DashboardSidebar({
             <span>Profile</span>
           </Link>
 
-          <p className="sd-nav-label">Coming soon</p>
-          {UPCOMING_MODULES.map(({ label, icon: Icon }) => (
-            <span key={label} className="sd-nav-item is-disabled" aria-disabled="true">
+          <p className="sd-nav-label">Academic</p>
+          {ACADEMIC_MODULES.map(({ label, icon: Icon, to }) => (
+            <Link key={label} to={to} className="sd-nav-item" onClick={onClose}>
               <Icon size={17} strokeWidth={2} aria-hidden="true" />
               <span>{label}</span>
-              <span className="sd-nav-soon">Soon</span>
-            </span>
+            </Link>
           ))}
         </nav>
       </aside>

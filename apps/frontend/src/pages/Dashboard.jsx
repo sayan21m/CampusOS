@@ -17,16 +17,19 @@ const MODULES = [
     icon: ClipboardList,
     title: "Assignments",
     description: "Create, publish, and review section assignments.",
+    to: "/assignments",
   },
   {
     icon: CalendarCheck,
     title: "Attendance",
     description: "Track class attendance across your sections.",
+    to: "/attendance",
   },
   {
     icon: Megaphone,
     title: "Notices",
     description: "Share announcements with students and staff.",
+    to: "/notices",
   },
 ];
 
@@ -46,6 +49,7 @@ function getInitials(name) {
 function Dashboard() {
   const { user, logout } = useAuth();
   const isFaculty = user?.role === "FACULTY";
+  const isAdmin = user?.role === "ADMIN";
   const roleLabel = user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : "User";
 
   return (
@@ -67,6 +71,12 @@ function Dashboard() {
               <Link to="/faculty-profile" className="db-btn db-btn-ghost" aria-label="Profile">
                 <UserRound size={16} aria-hidden="true" />
                 <span className="db-btn-label">Profile</span>
+              </Link>
+            )}
+            {isAdmin && (
+              <Link to="/admin-profile" className="db-btn db-btn-ghost" aria-label="Admin profile">
+                <UserRound size={16} aria-hidden="true" />
+                <span className="db-btn-label">Admin</span>
               </Link>
             )}
             <button
@@ -99,12 +109,12 @@ function Dashboard() {
           <div className="db-body">
             <div className="db-section-head">
               <h2>Workspace modules</h2>
-              <span className="db-muted">Rolling out soon</span>
+              <span className="db-muted">Connected routes</span>
             </div>
 
             <div className="db-modules">
-              {MODULES.map(({ icon: Icon, title, description }) => (
-                <article className="db-module" key={title}>
+              {MODULES.map(({ icon: Icon, title, description, to }) => (
+                <Link to={to} className="db-module" key={title} style={{ textDecoration: "none", color: "inherit" }}>
                   <span className="db-module-icon" aria-hidden="true">
                     <Icon size={20} />
                   </span>
@@ -112,8 +122,8 @@ function Dashboard() {
                     <h3>{title}</h3>
                     <p>{description}</p>
                   </div>
-                  <span className="db-soon">Coming soon</span>
-                </article>
+                  <span className="db-soon">Open →</span>
+                </Link>
               ))}
             </div>
 

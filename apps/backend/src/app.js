@@ -24,9 +24,33 @@ app.get("/", (req, res) => {
 });
 
 app.use(express.json());
+
+const defaultFrontendOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
+const configuredFrontendOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedFrontendOrigins = [
+  ...new Set([...defaultFrontendOrigins, ...configuredFrontendOrigins]),
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin(origin, callback) {
+      // Allow non-browser clients (no Origin) and configured frontend origins.
+      if (!origin || allowedFrontendOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
   })
 );
 app.use("/api/v1/auth", authRoutes);
