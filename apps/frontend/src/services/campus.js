@@ -225,6 +225,71 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+export async function fetchDepartments() {
+  const { data } = await api.get("/departments");
+  return Array.isArray(data.departments) ? data.departments : [];
+}
+
+export async function createDepartment({ dept_name, dept_code }) {
+  const { data } = await api.post("/departments", { dept_name, dept_code });
+  return data.department;
+}
+
+export async function updateDepartment(deptId, patch) {
+  const { data } = await api.patch(`/departments/${deptId}`, patch);
+  return data.department;
+}
+
+export async function createSubject(payload) {
+  const { data } = await api.post("/subjects", payload);
+  return data.subject;
+}
+
+export async function createNotice(payload) {
+  const { data } = await api.post("/notices", payload);
+  return data.notice ?? data;
+}
+
+export async function createStudentProfile(payload) {
+  const { data } = await api.post("/students", payload);
+  return data.student ?? data;
+}
+
+export async function createFacultyProfile(payload) {
+  const { data } = await api.post("/faculty", payload);
+  return data.faculty ?? data;
+}
+
+export async function fetchStudentById(studentId) {
+  const { data } = await api.get(`/students/${studentId}`);
+  return data.student ?? data;
+}
+
+export async function fetchTimetableSlots({ dept_id, semester, section }) {
+  const { data } = await api.get("/timetable", {
+    params: { dept_id, semester, section },
+  });
+  return Array.isArray(data.timetable) ? data.timetable : [];
+}
+
+export async function createTimetableSlot(payload) {
+  const { data } = await api.post("/timetable", payload);
+  return data.timetable ?? data;
+}
+
+export async function deleteTimetableSlot(timetableId) {
+  const { data } = await api.delete(`/timetable/${timetableId}`);
+  return data;
+}
+
+export async function changePassword({ currentPassword, newPassword }) {
+  const { data } = await api.patch("/auth/password", {
+    currentPassword,
+    newPassword,
+  });
+  return data;
+}
+
 export async function fetchWeekTimetable(anchorDate = new Date()) {
   const start = new Date(anchorDate);
   const day = start.getDay();
