@@ -20,6 +20,7 @@ model User {
 
   passwordResetTokens passwordResetToken[]
   notices             Notice[]
+  calendarEntries     AcademicCalendar[]
 
   student Student?
   faculty Faculty?
@@ -235,6 +236,34 @@ enum MaterialType {
   LAB_MANUALS
   REFERENCE_MATERIAL
   PREVIOUS_YEAR_PAPERS
+}
+
+enum CalendarEntryType {
+  HOLIDAY
+  EXAMINATION
+  ASSIGNMENT_DEADLINE
+  EVENT
+  LAST_WORKING_DAY
+}
+
+model AcademicCalendar {
+  calendar_id   Int               @id @default(autoincrement())
+  title         String
+  description   String?
+  entry_type    CalendarEntryType
+  start_date    DateTime          @db.Date
+  end_date      DateTime          @db.Date
+  academic_year Int
+  created_by    Int?
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
+
+  creator User? @relation(fields: [created_by], references: [user_id], onDelete: SetNull)
+
+  @@index([academic_year])
+  @@index([entry_type])
+  @@index([start_date, end_date])
+  @@index([created_by])
 }
 
 model Notes {
