@@ -13,25 +13,11 @@ import AdminProfile from "./pages/admin-profile";
 import StudentAssignments from "./pages/StudentAssignments";
 import NoticesPage from "./pages/NoticesPage";
 import TimetablePage from "./pages/TimetablePage";
-
-function ModulePlaceholder({ title }) {
-  return (
-    <div style={{ minHeight: "100vh", background: "#f4f7f6", padding: "40px", fontFamily: "inherit", boxSizing: "border-box" }}>
-      <div style={{ background: "#ffffff", padding: "32px", borderRadius: "16px", border: "1px solid #d7e0dc", maxWidth: "800px", margin: "0 auto" }}>
-        <h2 style={{ color: "#12241f", fontSize: "1.8rem", marginBottom: "12px" }}>{title} Module</h2>
-        <p style={{ color: "#4d625c", fontSize: "1rem", marginBottom: "24px" }}>
-          This module does not have a dedicated frontend wired to the API yet. Backend support may already exist for related data.
-        </p>
-        <a
-          href="/dashboard"
-          style={{ background: "#0f6b57", color: "#ffffff", padding: "10px 20px", borderRadius: "10px", textDecoration: "none", fontWeight: 600, display: "inline-block" }}
-        >
-          ← Back to Dashboard
-        </a>
-      </div>
-    </div>
-  );
-}
+import NotesPage from "./pages/NotesPage";
+import AttendancePage from "./pages/AttendancePage";
+import CalendarPage from "./pages/CalendarPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import SearchPage from "./pages/SearchPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -137,7 +123,7 @@ function App() {
         path="/notes"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Notes & LMS" />
+            <NotesPage />
           </ProtectedRoute>
         }
       />
@@ -145,7 +131,7 @@ function App() {
         path="/attendance"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Attendance" />
+            <AttendancePage />
           </ProtectedRoute>
         }
       />
@@ -153,7 +139,7 @@ function App() {
         path="/calendar"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Calendar" />
+            <CalendarPage />
           </ProtectedRoute>
         }
       />
@@ -161,7 +147,7 @@ function App() {
         path="/notifications"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Notifications" />
+            <NotificationsPage />
           </ProtectedRoute>
         }
       />
@@ -169,7 +155,7 @@ function App() {
         path="/search"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Campus Search" />
+            <SearchPage />
           </ProtectedRoute>
         }
       />

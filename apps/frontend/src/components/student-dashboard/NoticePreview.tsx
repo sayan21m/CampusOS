@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Megaphone } from "lucide-react";
 import SectionCard, { SectionEmpty } from "./SectionCard";
 
@@ -20,22 +21,16 @@ export default function NoticePreview({ notices }: NoticePreviewProps): React.JS
       title="Notices"
       icon={Megaphone}
       meta={
-        <button
-          type="button"
-          className="sd-link-btn"
-          disabled
-          aria-disabled="true"
-          title="Notice board is coming soon"
-        >
+        <Link to="/notices" className="sd-link-btn">
           View all
-        </button>
+        </Link>
       }
     >
       {notices.length === 0 ? (
         <SectionEmpty
           icon={Megaphone}
-          title="Notice board coming soon"
-          description="Campus announcements will appear here once notices are enabled."
+          title="No notices yet"
+          description="Campus announcements will appear here when published."
         />
       ) : (
         <ul className="sd-notices">

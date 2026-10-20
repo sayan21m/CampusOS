@@ -28,12 +28,9 @@ import {
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Profile", icon: UserRound, to: "/faculty-profile", active: true },
-];
-
-const UPCOMING_ITEMS = [
-  { label: "Assignments", icon: ClipboardList },
-  { label: "Attendance", icon: CalendarCheck },
-  { label: "Notices", icon: Megaphone },
+  { label: "Study materials", icon: ClipboardList, to: "/notes" },
+  { label: "Attendance", icon: CalendarCheck, to: "/attendance" },
+  { label: "Notices", icon: Megaphone, to: "/notices" },
 ];
 
 function hasValue(value) {
@@ -238,7 +235,6 @@ const FacultyProfile = () => {
       subtitle={profile?.designation || "Faculty"}
       photoUrl={profile?.profilePhoto || null}
       navItems={NAV_ITEMS}
-      upcomingItems={UPCOMING_ITEMS}
       onLogout={logout}
     >
       {renderContent()}

@@ -6,6 +6,104 @@ function createError(message, statusCode) {
   return error;
 }
 
+export async function getMySubjects(userId) {
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { role: true, isActive: true },
+  });
+
+  if (!user || !user.isActive) {
+    throw createError("User not found or inactive", 403);
+  }
+
+  if (user.role === "STUDENT") {
+    const student = await prisma.student.findUnique({
+      where: { user_id: userId },
+      select: { dept_id: true, semester: true },
+    });
+
+    if (!student) {
+      throw createError("Student profile not found", 404);
+    }
+
+    return prisma.subject.findMany({
+      where: {
+        dept_id: student.dept_id,
+        semester: student.semester,
+        is_active: true,
+      },
+      orderBy: [{ subject_code: "asc" }],
+      select: {
+        subject_id: true,
+        subject_code: true,
+        subject_name: true,
+        dept_id: true,
+        semester: true,
+        credits: true,
+        is_active: true,
+      },
+    });
+  }
+
+  if (user.role === "FACULTY") {
+    const faculty = await prisma.faculty.findUnique({
+      where: { user_id: userId },
+      select: { faculty_id: true, dept_id: true },
+    });
+
+    if (!faculty) {
+      throw createError("Faculty profile not found", 404);
+    }
+
+    const allotments = await prisma.timetableSlot.findMany({
+      where: { faculty_id: faculty.faculty_id },
+      select: { subject_id: true },
+      distinct: ["subject_id"],
+    });
+
+    const subjectIds = allotments.map((row) => row.subject_id);
+
+    if (subjectIds.length === 0) {
+      return [];
+    }
+
+    return prisma.subject.findMany({
+      where: {
+        subject_id: { in: subjectIds },
+        is_active: true,
+      },
+      orderBy: [{ subject_code: "asc" }],
+      select: {
+        subject_id: true,
+        subject_code: true,
+        subject_name: true,
+        dept_id: true,
+        semester: true,
+        credits: true,
+        is_active: true,
+      },
+    });
+  }
+
+  if (user.role === "ADMIN") {
+    return prisma.subject.findMany({
+      where: { is_active: true },
+      orderBy: [{ subject_code: "asc" }],
+      select: {
+        subject_id: true,
+        subject_code: true,
+        subject_name: true,
+        dept_id: true,
+        semester: true,
+        credits: true,
+        is_active: true,
+      },
+    });
+  }
+
+  throw createError("Permission denied", 403);
+}
+
 export async function createSubject(subjectData) {
   const { subject_code, subject_name, dept_id, semester, credits, is_active } = subjectData;
 

@@ -138,3 +138,117 @@ export async function fetchFacultyAssignments() {
       ? data
       : [];
 }
+
+export async function fetchSubjects() {
+  const { data } = await api.get("/subjects");
+  return Array.isArray(data.subjects) ? data.subjects : [];
+}
+
+export async function fetchNotes(params = {}) {
+  const { data } = await api.get("/notes", { params });
+  const rows = Array.isArray(data.notes) ? data.notes : [];
+
+  return rows.map((note) => ({
+    id: note.notes_id,
+    subjectId: note.subject_id,
+    subjectName: note.subject?.subject_name || "Subject",
+    subjectCode: note.subject?.subject_code || `SUB-${note.subject_id}`,
+    title: note.title,
+    description: note.description || "",
+    unitNumber: note.unit_number,
+    materialType: note.material_type,
+    academicYear: note.academic_year,
+    fileSizeBytes: note.file_size_bytes,
+    createdAt: note.created_at,
+    uploadedBy: note.uploaded_by,
+  }));
+}
+
+export async function uploadNote(payload) {
+  const form = new FormData();
+  form.append("file", payload.file);
+  form.append("subject_id", String(payload.subjectId));
+  form.append("title", payload.title);
+  if (payload.description) {
+    form.append("description", payload.description);
+  }
+  form.append("unit_number", String(payload.unitNumber));
+  form.append("material_type", payload.materialType);
+  form.append("academic_year", String(payload.academicYear));
+
+  const { data } = await api.post("/notes", form);
+  return data;
+}
+
+export async function deleteNote(notesId) {
+  const { data } = await api.delete(`/notes/${notesId}`);
+  return data;
+}
+
+export async function downloadNoteFile(notesId, title = "material") {
+  const response = await api.get(`/notes/${notesId}/download`, {
+    responseType: "blob",
+  });
+
+  const disposition = response.headers["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || `${title}.bin`;
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function previewNoteFile(notesId) {
+  const response = await api.get(`/notes/${notesId}/preview`, {
+    responseType: "blob",
+  });
+  return window.URL.createObjectURL(response.data);
+}
+
+export async function fetchEffectiveTimetable(date) {
+  const { data } = await api.get("/timetable/effective", {
+    params: { date },
+  });
+  const rows = Array.isArray(data.timetable) ? data.timetable : [];
+  return rows.map(mapTimetableOccurrence);
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export async function fetchWeekTimetable(anchorDate = new Date()) {
+  const start = new Date(anchorDate);
+  const day = start.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + mondayOffset);
+  start.setHours(12, 0, 0, 0);
+
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+
+  const results = await Promise.all(
+    days.map(async (date) => {
+      const key = toDateKey(date);
+      try {
+        const classes = await fetchEffectiveTimetable(key);
+        return { date: key, label: date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }), classes };
+      } catch {
+        return { date: key, label: date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }), classes: [] };
+      }
+    })
+  );
+
+  return results;
+}
