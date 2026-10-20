@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { fetchNotices, fetchTodayTimetable } from "../services/campus";
 import "./Login.css";
 
 interface ClassSchedule {
@@ -36,39 +37,19 @@ export default function StudentDashboard(): React.JSX.Element {
     async function fetchDashboardData() {
       try {
         setLoadingData(true);
-        const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-        
-        // Fetching live data from backend server synchronized with your environment configuration
-        const response = await fetch(`${apiUrl}/student/dashboard`, {
-          headers: { Authorization: `Bearer ${user?.token}` }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setTodaysClasses(data.classes || []);
-          setRecentNotices(data.notices || []);
-        } else {
-          // Fallback demo data if backend connection is pending
-          setTodaysClasses([
-            { time: "09:30 AM - 11:00 AM", subject: "Full Stack Web Engineering", code: "CSE-301", room: "Lab 3", status: "Ongoing" },
-            { time: "11:15 AM - 12:45 PM", subject: "Advanced Database Systems", code: "CSE-303", room: "Hall B", status: "Upcoming" }
-          ]);
-          setRecentNotices([
-            { title: "Phase 1 Submission Guidelines for Semester Project", date: "Oct 16, 2026", tag: "Academic", urgent: true },
-            { title: "Campus Library Extended Hours During Midterms", date: "Oct 14, 2026", tag: "General", urgent: false }
-          ]);
-        }
         setError("");
+
+        const [classes, notices] = await Promise.all([
+          fetchTodayTimetable(),
+          fetchNotices(),
+        ]);
+
+        setTodaysClasses(classes);
+        setRecentNotices(notices.slice(0, 5));
       } catch (err) {
-        // Fallback local mock state so UI renders smoothly even if backend server isn't running yet
-        setTodaysClasses([
-          { time: "09:30 AM - 11:00 AM", subject: "Full Stack Web Engineering", code: "CSE-301", room: "Lab 3", status: "Ongoing" },
-          { time: "11:15 AM - 12:45 PM", subject: "Advanced Database Systems", code: "CSE-303", room: "Hall B", status: "Upcoming" }
-        ]);
-        setRecentNotices([
-          { title: "Phase 1 Submission Guidelines for Semester Project", date: "Oct 16, 2026", tag: "Academic", urgent: true }
-        ]);
-        setError("Running in offline mode: Backend server sync pending.");
+        setTodaysClasses([]);
+        setRecentNotices([]);
+        setError("Unable to load live dashboard data from the CampusOS API.");
       } finally {
         setLoadingData(false);
       }
@@ -103,7 +84,7 @@ export default function StudentDashboard(): React.JSX.Element {
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", position: "relative", zIndex: 50, pointerEvents: "auto" }}>
               <Link 
-                to="/student_prof" 
+                to="/student-profile" 
                 style={{ background: "rgba(255, 255, 255, 0.15)", border: "1px solid rgba(255, 255, 255, 0.3)", color: "#ffffff", padding: "10px 18px", borderRadius: "12px", fontSize: "0.9rem", fontWeight: 600, textDecoration: "none", backdropFilter: "blur(4px)", transition: "background 0.2s", pointerEvents: "auto", cursor: "pointer" }}
               >
                 👤 View Profile
@@ -131,7 +112,7 @@ export default function StudentDashboard(): React.JSX.Element {
                 <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
                   📅 Today's Timetable
                 </h3>
-                <span style={{ fontSize: "0.8rem", color: "#6a827b", fontWeight: 600 }}>Live Feed</span>
+                <Link to="/timetable" style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, textDecoration: "none" }}>Open Timetable →</Link>
               </div>
 
               {loadingData ? (
@@ -178,7 +159,7 @@ export default function StudentDashboard(): React.JSX.Element {
                 <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
                   📢 Recent Institutional Notices
                 </h3>
-                <span style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, cursor: "pointer" }}>View All →</span>
+                <Link to="/notices" style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, textDecoration: "none" }}>View All →</Link>
               </div>
 
               {loadingData ? (

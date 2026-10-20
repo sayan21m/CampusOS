@@ -266,6 +266,15 @@ export async function getMyAssignments(student_id) {
         },
       ],
     },
+    include: {
+      subject: {
+        select: {
+          subject_id: true,
+          subject_code: true,
+          subject_name: true,
+        },
+      },
+    },
   });
 
   const submissions = await prisma.submission.findMany({
@@ -332,6 +341,8 @@ export async function getMyAssignments(student_id) {
       assignment_id: assignment.assignment_id,
       title: assignment.title,
       subject_id: assignment.subject_id,
+      subject_code: assignment.subject?.subject_code ?? null,
+      subject_name: assignment.subject?.subject_name ?? null,
       section: assignment.section,
       deadline: assignment.deadline,
       max_marks: assignment.max_marks,

@@ -11,21 +11,22 @@ import StudentDashboard from "./pages/StudentDashboard";
 import FacultyDashboard from "./pages/faculty_dashboard";
 import AdminProfile from "./pages/admin-profile";
 import StudentAssignments from "./pages/StudentAssignments";
+import NoticesPage from "./pages/NoticesPage";
+import TimetablePage from "./pages/TimetablePage";
 
-// Inline placeholder component for Phase 1 modules to ensure seamless same-tab rendering
 function ModulePlaceholder({ title }) {
   return (
     <div style={{ minHeight: "100vh", background: "#f4f7f6", padding: "40px", fontFamily: "inherit", boxSizing: "border-box" }}>
       <div style={{ background: "#ffffff", padding: "32px", borderRadius: "16px", border: "1px solid #d7e0dc", maxWidth: "800px", margin: "0 auto" }}>
         <h2 style={{ color: "#12241f", fontSize: "1.8rem", marginBottom: "12px" }}>{title} Module</h2>
         <p style={{ color: "#4d625c", fontSize: "1rem", marginBottom: "24px" }}>
-          This Phase 1 module is successfully rendering in the same tab. You can replace this component with your actual module page file whenever you are ready.
+          This module does not have a dedicated frontend wired to the API yet. Backend support may already exist for related data.
         </p>
         <a
           href="/dashboard"
           style={{ background: "#0f6b57", color: "#ffffff", padding: "10px 20px", borderRadius: "10px", textDecoration: "none", fontWeight: 600, display: "inline-block" }}
         >
-          ← Back to Student Dashboard
+          ← Back to Dashboard
         </a>
       </div>
     </div>
@@ -47,6 +48,14 @@ function RoleDashboard() {
 
   if (user?.role === "STUDENT") {
     return <StudentDashboard />;
+  }
+
+  if (user?.role === "FACULTY") {
+    return <FacultyDashboard />;
+  }
+
+  if (user?.role === "ADMIN") {
+    return <AdminProfile />;
   }
 
   return <Dashboard />;
@@ -112,7 +121,15 @@ function App() {
         path="/timetable"
         element={
           <ProtectedRoute>
-            <ModulePlaceholder title="Timetable" />
+            <TimetablePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notices"
+        element={
+          <ProtectedRoute>
+            <NoticesPage />
           </ProtectedRoute>
         }
       />
@@ -121,14 +138,6 @@ function App() {
         element={
           <ProtectedRoute>
             <ModulePlaceholder title="Notes & LMS" />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/notices"
-        element={
-          <ProtectedRoute>
-            <ModulePlaceholder title="Notices" />
           </ProtectedRoute>
         }
       />
