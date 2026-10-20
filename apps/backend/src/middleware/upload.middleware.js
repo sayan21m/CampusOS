@@ -23,3 +23,28 @@ const uploadNotes = multer({
 });
 
 export const uploadNotesFile = uploadNotes.single("file");
+
+const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024,
+    files: 1,
+  },
+  fileFilter(_req, file, cb) {
+    const name = String(file.originalname || "").toLowerCase();
+    const okMime =
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.mimetype === "application/csv" ||
+      file.mimetype === "text/plain";
+
+    if (okMime || name.endsWith(".csv")) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("Only CSV files are allowed"));
+  },
+});
+
+export const uploadCsvFile = uploadCsv.single("file");

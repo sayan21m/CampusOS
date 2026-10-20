@@ -21,6 +21,9 @@ const mockPrisma = {
   timetableSlot: {
     findFirst: jest.fn(),
   },
+  facultySubjectAllocation: {
+    findUnique: jest.fn(),
+  },
   notes: {
     create: jest.fn(),
     findMany: jest.fn(),
@@ -168,6 +171,7 @@ describe("Notes validators", () => {
 describe("Notes service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPrisma.facultySubjectAllocation.findUnique.mockResolvedValue(null);
     mockSaveNotesFile.mockResolvedValue({
       filename: "abc.pdf",
       originalName: "unit3-notes.pdf",
@@ -496,6 +500,7 @@ describe("Notes service", () => {
 describe("Notes controllers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPrisma.facultySubjectAllocation.findUnique.mockResolvedValue(null);
   });
 
   test("createNotesController returns 400 for invalid file", async () => {

@@ -14,6 +14,8 @@ import submissionRoutes from "./routes/submission.routes.js";
 import noticeRoutes from "./routes/notice.routes.js";
 import timetableRoutes from "./routes/timetable.routes.js";
 import notesRoutes from "./routes/notes.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import allocationRoutes from "./routes/allocation.routes.js";
 
 import cors from "cors";
 
@@ -64,6 +66,8 @@ app.use("/api/v1/submissions", submissionRoutes);
 app.use("/api/v1/notices", noticeRoutes);
 app.use("/api/v1/timetable", timetableRoutes);
 app.use("/api/v1/notes", notesRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/allocations", allocationRoutes);
 
 app.use(handleUploadError);
 

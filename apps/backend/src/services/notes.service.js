@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { validateNotesFile } from "../validators/notes.validator.js";
 import { saveNotesFile, deleteNotesFile } from "./notes-storage.service.js";
+import { isFacultyAllocatedToSubject } from "./allocation.service.js";
 
 const STORAGE_ROOT = path.resolve("apps/backend/storage");
 
@@ -42,15 +43,9 @@ export async function createNotes(userId, notesData, file) {
     throw createError("You cannot upload materials for this subject", 403);
   }
 
-  const allotment = await prisma.timetableSlot.findFirst({
-    where: {
-      subject_id,
-      faculty_id: faculty.faculty_id,
-    },
-    select: { timetable_id: true },
-  });
+  const allotted = await isFacultyAllocatedToSubject(faculty.faculty_id, subject_id);
 
-  if (!allotment) {
+  if (!allotted) {
     throw createError(
       "You are not allotted to teach this subject",
       403
@@ -246,13 +241,10 @@ export async function getAccessibleNote(userId, notesId) {
       throw createError("Faculty profile not found", 404);
     }
 
-    const allotted = await prisma.timetableSlot.findFirst({
-      where: {
-        subject_id: note.subject_id,
-        faculty_id: faculty.faculty_id,
-      },
-      select: { timetable_id: true },
-    });
+    const allotted = await isFacultyAllocatedToSubject(
+      faculty.faculty_id,
+      note.subject_id
+    );
 
     if (
       note.subject.dept_id !== faculty.dept_id ||
@@ -352,13 +344,10 @@ export async function replaceNotes(userId, notesId, notesData, file) {
       );
     }
   
-    const allotted = await prisma.timetableSlot.findFirst({
-      where: {
-        subject_id: existing.subject_id,
-        faculty_id: faculty.faculty_id,
-      },
-      select: { timetable_id: true },
-    });
+    const allotted = await isFacultyAllocatedToSubject(
+      faculty.faculty_id,
+      existing.subject_id
+    );
   
     if (
       existing.subject.dept_id !== faculty.dept_id ||
@@ -486,13 +475,10 @@ export async function deleteNotes(user_id, notes_id) {
         throw createError("You can only delete materials uploaded by you", 403);
     }
 
-    const allotted = await prisma.timetableSlot.findFirst({
-        where: {
-            subject_id: existing.subject_id,
-            faculty_id: faculty.faculty_id,
-        },
-        select: { timetable_id: true },
-    });
+    const allotted = await isFacultyAllocatedToSubject(
+        faculty.faculty_id,
+        existing.subject_id
+    );
 
     if (
         existing.subject.dept_id !== faculty.dept_id ||

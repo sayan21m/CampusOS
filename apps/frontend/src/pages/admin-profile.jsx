@@ -20,20 +20,27 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
+  activateUser,
+  adminResetUserPassword,
+  bulkCreateUsersCsv,
   changePassword,
+  createAllocation,
   createDepartment,
-  createFacultyProfile,
+  createManagedUser,
   createNotice,
-  createStudentProfile,
   createSubject,
   createTimetableSlot,
+  deactivateUser,
+  deleteAllocation,
   deleteTimetableSlot,
+  fetchAllocations,
   fetchDepartments,
   fetchNotices,
-  fetchStudentById,
   fetchSubjects,
   fetchTimetableSlots,
+  fetchUsers,
   updateDepartment,
+  updateManagedUser,
 } from "../services/campus";
 import "./admin-profile.css";
 
@@ -133,28 +140,30 @@ export default function AdminProfile() {
   const [departments, setDepartments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [notices, setNotices] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [userFilter, setUserFilter] = useState({ role: "", search: "", isActive: "" });
 
   const [deptForm, setDeptForm] = useState({ dept_name: "", dept_code: "" });
-  const [studentForm, setStudentForm] = useState({
-    userId: "",
-    roll_number: "",
-    full_name: "",
+  const [userForm, setUserForm] = useState({
+    role: "STUDENT",
+    name: "",
+    email: "",
+    password: "",
     dept_id: "",
+    roll_number: "",
     semester: "1",
     section: "A",
     admission_year: String(new Date().getFullYear()),
-    phone: "",
-  });
-  const [facultyForm, setFacultyForm] = useState({
-    userId: "",
     employee_id: "",
-    full_name: "",
-    dept_id: "",
     designation: "",
     phone: "",
   });
-  const [studentLookupId, setStudentLookupId] = useState("");
-  const [studentLookup, setStudentLookup] = useState(null);
+  const [csvFile, setCsvFile] = useState(null);
+  const [allocationForm, setAllocationForm] = useState({
+    faculty_id: "",
+    subject_id: "",
+  });
 
   const [subjectForm, setSubjectForm] = useState({
     subject_code: "",
@@ -213,21 +222,35 @@ export default function AdminProfile() {
 
   const academicDates = useMemo(() => calendarNotices.slice(0, 8), [calendarNotices]);
 
+  const facultyUsers = useMemo(
+    () => users.filter((row) => row.role === "FACULTY" && row.faculty),
+    [users]
+  );
+
+  async function refreshUsers(nextFilter = userFilter) {
+    const params = {};
+    if (nextFilter.role) params.role = nextFilter.role;
+    if (nextFilter.search) params.search = nextFilter.search;
+    if (nextFilter.isActive) params.isActive = nextFilter.isActive;
+    const rows = await fetchUsers(params);
+    setUsers(rows);
+  }
+
   async function refreshCore() {
-    const [deptRows, subjectRows, noticeRows] = await Promise.all([
+    const [deptRows, subjectRows, noticeRows, allocationRows] = await Promise.all([
       fetchDepartments(),
       fetchSubjects(),
       fetchNotices(),
+      fetchAllocations().catch(() => []),
     ]);
     setDepartments(deptRows);
     setSubjects(subjectRows);
     setNotices(noticeRows);
+    setAllocations(allocationRows);
+    await refreshUsers();
 
-    if (!studentForm.dept_id && deptRows[0]) {
-      setStudentForm((prev) => ({ ...prev, dept_id: String(deptRows[0].dept_id) }));
-    }
-    if (!facultyForm.dept_id && deptRows[0]) {
-      setFacultyForm((prev) => ({ ...prev, dept_id: String(deptRows[0].dept_id) }));
+    if (!userForm.dept_id && deptRows[0]) {
+      setUserForm((prev) => ({ ...prev, dept_id: String(deptRows[0].dept_id) }));
     }
     if (!subjectForm.dept_id && deptRows[0]) {
       setSubjectForm((prev) => ({ ...prev, dept_id: String(deptRows[0].dept_id) }));
@@ -238,6 +261,9 @@ export default function AdminProfile() {
     }
     if (!ttForm.subject_id && subjectRows[0]) {
       setTtForm((prev) => ({ ...prev, subject_id: String(subjectRows[0].subject_id) }));
+    }
+    if (!allocationForm.subject_id && subjectRows[0]) {
+      setAllocationForm((prev) => ({ ...prev, subject_id: String(subjectRows[0].subject_id) }));
     }
   }
 
@@ -298,66 +324,136 @@ export default function AdminProfile() {
     }
   }
 
-  async function handleCreateStudent(event) {
+  async function handleCreateUser(event) {
     event.preventDefault();
     try {
-      await createStudentProfile({
-        userId: Number(studentForm.userId),
-        roll_number: studentForm.roll_number,
-        full_name: studentForm.full_name,
-        dept_id: Number(studentForm.dept_id),
-        semester: Number(studentForm.semester),
-        section: studentForm.section,
-        admission_year: Number(studentForm.admission_year),
-        ...(studentForm.phone ? { phone: studentForm.phone } : {}),
-      });
-      flashSuccess("Student profile created.");
-      setStudentForm((prev) => ({
-        ...prev,
-        userId: "",
-        roll_number: "",
-        full_name: "",
-        phone: "",
-      }));
-    } catch (err) {
-      flashError(err, "Could not create student profile. User account must already exist.");
-    }
-  }
+      const payload = {
+        role: userForm.role,
+        name: userForm.name,
+        email: userForm.email,
+        password: userForm.password,
+        dept_id: Number(userForm.dept_id),
+        full_name: userForm.name,
+        ...(userForm.phone ? { phone: userForm.phone } : {}),
+      };
 
-  async function handleCreateFaculty(event) {
-    event.preventDefault();
-    try {
-      await createFacultyProfile({
-        userId: Number(facultyForm.userId),
-        employee_id: facultyForm.employee_id,
-        full_name: facultyForm.full_name,
-        dept_id: Number(facultyForm.dept_id),
-        designation: facultyForm.designation,
-        ...(facultyForm.phone ? { phone: facultyForm.phone } : {}),
-      });
-      flashSuccess("Faculty profile created.");
-      setFacultyForm((prev) => ({
+      if (userForm.role === "STUDENT") {
+        Object.assign(payload, {
+          roll_number: userForm.roll_number,
+          semester: Number(userForm.semester),
+          section: userForm.section,
+          admission_year: Number(userForm.admission_year),
+        });
+      } else {
+        Object.assign(payload, {
+          employee_id: userForm.employee_id,
+          designation: userForm.designation,
+        });
+      }
+
+      await createManagedUser(payload);
+      setUserForm((prev) => ({
         ...prev,
-        userId: "",
+        name: "",
+        email: "",
+        password: "",
+        roll_number: "",
         employee_id: "",
-        full_name: "",
         designation: "",
         phone: "",
       }));
+      await refreshCore();
+      flashSuccess("User created with profile.");
     } catch (err) {
-      flashError(err, "Could not create faculty profile. User account must already exist with FACULTY role.");
+      flashError(err, "Could not create user.");
     }
   }
 
-  async function handleLookupStudent(event) {
+  async function handleEditUser(row) {
+    const nextName = window.prompt("Full name", row.student?.full_name || row.faculty?.full_name || row.name);
+    if (!nextName || !nextName.trim()) return;
+    try {
+      await updateManagedUser(row.user_id, {
+        name: nextName.trim(),
+        full_name: nextName.trim(),
+      });
+      await refreshUsers();
+      flashSuccess("User updated.");
+    } catch (err) {
+      flashError(err, "Could not update user.");
+    }
+  }
+
+  async function handleToggleActive(row) {
+    try {
+      if (row.isActive) {
+        await deactivateUser(row.user_id);
+        flashSuccess("User deactivated.");
+      } else {
+        await activateUser(row.user_id);
+        flashSuccess("User activated.");
+      }
+      await refreshUsers();
+    } catch (err) {
+      flashError(err, "Could not update account status.");
+    }
+  }
+
+  async function handleResetPassword(row) {
+    const nextPassword = window.prompt(`New password for ${row.email}`);
+    if (!nextPassword || nextPassword.length < 8) {
+      flashError(null, "Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      await adminResetUserPassword(row.user_id, nextPassword);
+      flashSuccess("Password reset.");
+    } catch (err) {
+      flashError(err, "Could not reset password.");
+    }
+  }
+
+  async function handleCsvUpload(event) {
+    event.preventDefault();
+    if (!csvFile) {
+      flashError(null, "Choose a CSV file first.");
+      return;
+    }
+    try {
+      const result = await bulkCreateUsersCsv(csvFile);
+      setCsvFile(null);
+      await refreshCore();
+      flashSuccess(
+        `CSV import finished: ${result.created_count} created, ${result.failed_count} failed.`
+      );
+    } catch (err) {
+      flashError(err, "CSV import failed.");
+    }
+  }
+
+  async function handleCreateAllocation(event) {
     event.preventDefault();
     try {
-      const row = await fetchStudentById(studentLookupId);
-      setStudentLookup(row);
-      flashSuccess("Student found.");
+      await createAllocation({
+        faculty_id: Number(allocationForm.faculty_id),
+        subject_id: Number(allocationForm.subject_id),
+      });
+      const rows = await fetchAllocations();
+      setAllocations(rows);
+      flashSuccess("Faculty allocated to subject.");
     } catch (err) {
-      setStudentLookup(null);
-      flashError(err, "Student not found.");
+      flashError(err, "Could not create allocation.");
+    }
+  }
+
+  async function handleDeleteAllocation(allocationId) {
+    if (!window.confirm(`Remove allocation #${allocationId}?`)) return;
+    try {
+      await deleteAllocation(allocationId);
+      setAllocations(await fetchAllocations());
+      flashSuccess("Allocation removed.");
+    } catch (err) {
+      flashError(err, "Could not delete allocation.");
     }
   }
 
@@ -672,6 +768,186 @@ export default function AdminProfile() {
               <article className="ap-panel">
                 <div className="ap-panel-heading">
                   <div>
+                    <Users />
+                    <h2>User directory</h2>
+                  </div>
+                </div>
+                <form
+                  className="ap-form-grid"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    try {
+                      await refreshUsers(userFilter);
+                      flashSuccess("User list refreshed.");
+                    } catch (err) {
+                      flashError(err, "Could not load users.");
+                    }
+                  }}
+                >
+                  <Field label="Role">
+                    <select value={userFilter.role} onChange={(e) => setUserFilter({ ...userFilter, role: e.target.value })}>
+                      <option value="">All</option>
+                      <option value="STUDENT">STUDENT</option>
+                      <option value="FACULTY">FACULTY</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </Field>
+                  <Field label="Status">
+                    <select value={userFilter.isActive} onChange={(e) => setUserFilter({ ...userFilter, isActive: e.target.value })}>
+                      <option value="">All</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </Field>
+                  <Field label="Search">
+                    <input value={userFilter.search} onChange={(e) => setUserFilter({ ...userFilter, search: e.target.value })} placeholder="name, email, roll, employee id" />
+                  </Field>
+                  <button type="submit" className="ap-confirm-btn">Apply filters</button>
+                </form>
+                <div className="ap-table-wrap" style={{ marginTop: 16 }}>
+                  <table className="ap-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Profile</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((row) => (
+                        <tr key={row.user_id}>
+                          <td>{row.user_id}</td>
+                          <td>{row.name}</td>
+                          <td>{row.email}</td>
+                          <td>{row.role}</td>
+                          <td>
+                            {row.student
+                              ? `${row.student.roll_number} · sem ${row.student.semester}${row.student.section}`
+                              : row.faculty
+                                ? `${row.faculty.employee_id} · ${row.faculty.designation}`
+                                : "—"}
+                          </td>
+                          <td>
+                            <span className="ap-tag">{row.isActive ? "Active" : "Inactive"}</span>
+                          </td>
+                          <td>
+                            <div className="ap-action-row">
+                              {row.role !== "ADMIN" ? (
+                                <>
+                                  <button type="button" className="ap-text-action" onClick={() => handleEditUser(row)}>Edit</button>
+                                  <button type="button" className="ap-text-action" onClick={() => handleToggleActive(row)}>
+                                    {row.isActive ? "Deactivate" : "Activate"}
+                                  </button>
+                                  <button type="button" className="ap-text-action" onClick={() => handleResetPassword(row)}>Reset password</button>
+                                </>
+                              ) : (
+                                <span className="ap-help">Protected</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {users.length === 0 ? (
+                        <tr>
+                          <td colSpan={7}>No users match these filters.</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <div className="ap-split">
+                <article className="ap-panel">
+                  <div className="ap-panel-heading">
+                    <div>
+                      <Users />
+                      <h2>Create user + profile</h2>
+                    </div>
+                  </div>
+                  <form className="ap-form-grid" onSubmit={handleCreateUser}>
+                    <Field label="Role">
+                      <select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
+                        <option value="STUDENT">STUDENT</option>
+                        <option value="FACULTY">FACULTY</option>
+                      </select>
+                    </Field>
+                    <Field label="Name">
+                      <input value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required />
+                    </Field>
+                    <Field label="Email">
+                      <input type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
+                    </Field>
+                    <Field label="Password">
+                      <input type="password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} minLength={8} required />
+                    </Field>
+                    <Field label="Department">
+                      <select value={userForm.dept_id} onChange={(e) => setUserForm({ ...userForm, dept_id: e.target.value })} required>
+                        {departments.map((dept) => (
+                          <option key={dept.dept_id} value={dept.dept_id}>
+                            {dept.dept_code} — {dept.dept_name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    {userForm.role === "STUDENT" ? (
+                      <>
+                        <Field label="Roll number">
+                          <input value={userForm.roll_number} onChange={(e) => setUserForm({ ...userForm, roll_number: e.target.value })} required />
+                        </Field>
+                        <Field label="Semester">
+                          <input type="number" min={1} max={8} value={userForm.semester} onChange={(e) => setUserForm({ ...userForm, semester: e.target.value })} required />
+                        </Field>
+                        <Field label="Section">
+                          <input value={userForm.section} onChange={(e) => setUserForm({ ...userForm, section: e.target.value })} required />
+                        </Field>
+                        <Field label="Admission year">
+                          <input type="number" value={userForm.admission_year} onChange={(e) => setUserForm({ ...userForm, admission_year: e.target.value })} required />
+                        </Field>
+                      </>
+                    ) : (
+                      <>
+                        <Field label="Employee ID">
+                          <input value={userForm.employee_id} onChange={(e) => setUserForm({ ...userForm, employee_id: e.target.value })} required />
+                        </Field>
+                        <Field label="Designation">
+                          <input value={userForm.designation} onChange={(e) => setUserForm({ ...userForm, designation: e.target.value })} required />
+                        </Field>
+                      </>
+                    )}
+                    <Field label="Phone (optional)">
+                      <input value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} placeholder="9876543210" />
+                    </Field>
+                    <button type="submit" className="ap-confirm-btn">Create account</button>
+                  </form>
+                </article>
+
+                <article className="ap-panel">
+                  <div className="ap-panel-heading">
+                    <div>
+                      <FileText />
+                      <h2>CSV bulk upload</h2>
+                    </div>
+                  </div>
+                  <p className="ap-help">
+                    Header: role,name,email,password,dept_id,roll_number,semester,section,admission_year,employee_id,designation,phone
+                  </p>
+                  <form className="ap-form-grid" onSubmit={handleCsvUpload}>
+                    <Field label="CSV file">
+                      <input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} required />
+                    </Field>
+                    <button type="submit" className="ap-confirm-btn">Import CSV</button>
+                  </form>
+                </article>
+              </div>
+
+              <article className="ap-panel">
+                <div className="ap-panel-heading">
+                  <div>
                     <Building2 />
                     <h2>Departments</h2>
                   </div>
@@ -711,104 +987,6 @@ export default function AdminProfile() {
                     </tbody>
                   </table>
                 </div>
-              </article>
-
-              <div className="ap-split">
-                <article className="ap-panel">
-                  <div className="ap-panel-heading">
-                    <div>
-                      <Users />
-                      <h2>Create student profile</h2>
-                    </div>
-                  </div>
-                  <p className="ap-help">Requires an existing User account (`userId`). Students usually register first.</p>
-                  <form className="ap-form-grid" onSubmit={handleCreateStudent}>
-                    <Field label="User ID">
-                      <input type="number" value={studentForm.userId} onChange={(e) => setStudentForm({ ...studentForm, userId: e.target.value })} required />
-                    </Field>
-                    <Field label="Roll number">
-                      <input value={studentForm.roll_number} onChange={(e) => setStudentForm({ ...studentForm, roll_number: e.target.value })} required />
-                    </Field>
-                    <Field label="Full name">
-                      <input value={studentForm.full_name} onChange={(e) => setStudentForm({ ...studentForm, full_name: e.target.value })} required />
-                    </Field>
-                    <Field label="Department">
-                      <select value={studentForm.dept_id} onChange={(e) => setStudentForm({ ...studentForm, dept_id: e.target.value })} required>
-                        {departments.map((dept) => (
-                          <option key={dept.dept_id} value={dept.dept_id}>
-                            {dept.dept_code} — {dept.dept_name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Semester">
-                      <input type="number" min={1} max={8} value={studentForm.semester} onChange={(e) => setStudentForm({ ...studentForm, semester: e.target.value })} required />
-                    </Field>
-                    <Field label="Section">
-                      <input value={studentForm.section} onChange={(e) => setStudentForm({ ...studentForm, section: e.target.value })} required />
-                    </Field>
-                    <Field label="Admission year">
-                      <input type="number" value={studentForm.admission_year} onChange={(e) => setStudentForm({ ...studentForm, admission_year: e.target.value })} required />
-                    </Field>
-                    <Field label="Phone (optional)">
-                      <input value={studentForm.phone} onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })} placeholder="9876543210" />
-                    </Field>
-                    <button type="submit" className="ap-confirm-btn">Create student</button>
-                  </form>
-                </article>
-
-                <article className="ap-panel">
-                  <div className="ap-panel-heading">
-                    <div>
-                      <Users />
-                      <h2>Create faculty profile</h2>
-                    </div>
-                  </div>
-                  <p className="ap-help">Requires an existing User with FACULTY role (`userId`).</p>
-                  <form className="ap-form-grid" onSubmit={handleCreateFaculty}>
-                    <Field label="User ID">
-                      <input type="number" value={facultyForm.userId} onChange={(e) => setFacultyForm({ ...facultyForm, userId: e.target.value })} required />
-                    </Field>
-                    <Field label="Employee ID">
-                      <input value={facultyForm.employee_id} onChange={(e) => setFacultyForm({ ...facultyForm, employee_id: e.target.value })} required />
-                    </Field>
-                    <Field label="Full name">
-                      <input value={facultyForm.full_name} onChange={(e) => setFacultyForm({ ...facultyForm, full_name: e.target.value })} required />
-                    </Field>
-                    <Field label="Department">
-                      <select value={facultyForm.dept_id} onChange={(e) => setFacultyForm({ ...facultyForm, dept_id: e.target.value })} required>
-                        {departments.map((dept) => (
-                          <option key={dept.dept_id} value={dept.dept_id}>
-                            {dept.dept_code} — {dept.dept_name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Designation">
-                      <input value={facultyForm.designation} onChange={(e) => setFacultyForm({ ...facultyForm, designation: e.target.value })} required />
-                    </Field>
-                    <Field label="Phone (optional)">
-                      <input value={facultyForm.phone} onChange={(e) => setFacultyForm({ ...facultyForm, phone: e.target.value })} placeholder="9876543210" />
-                    </Field>
-                    <button type="submit" className="ap-confirm-btn">Create faculty</button>
-                  </form>
-                </article>
-              </div>
-
-              <article className="ap-panel">
-                <div className="ap-panel-heading">
-                  <div>
-                    <Users />
-                    <h2>Lookup student by ID</h2>
-                  </div>
-                </div>
-                <form className="ap-form-inline" onSubmit={handleLookupStudent}>
-                  <input type="number" value={studentLookupId} onChange={(e) => setStudentLookupId(e.target.value)} placeholder="student_id" required />
-                  <button type="submit" className="ap-confirm-btn">Lookup</button>
-                </form>
-                {studentLookup ? (
-                  <pre className="ap-code">{JSON.stringify(studentLookup, null, 2)}</pre>
-                ) : null}
               </article>
             </section>
           )}
@@ -881,6 +1059,77 @@ export default function AdminProfile() {
                       {subjects.length === 0 ? (
                         <tr>
                           <td colSpan={6}>No subjects yet.</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article className="ap-panel">
+                <div className="ap-panel-heading">
+                  <div>
+                    <Users />
+                    <h2>Faculty–subject allocation</h2>
+                  </div>
+                </div>
+                <p className="ap-help">
+                  Allocations are independent of timetable slots. Notes upload authorization accepts either an allocation or a timetable allotment.
+                </p>
+                <form className="ap-form-grid" onSubmit={handleCreateAllocation}>
+                  <Field label="Faculty">
+                    <select value={allocationForm.faculty_id} onChange={(e) => setAllocationForm({ ...allocationForm, faculty_id: e.target.value })} required>
+                      <option value="">Select faculty</option>
+                      {facultyUsers.map((row) => (
+                        <option key={row.user_id} value={row.faculty.faculty_id}>
+                          {row.faculty.full_name} ({row.faculty.employee_id})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Subject">
+                    <select value={allocationForm.subject_id} onChange={(e) => setAllocationForm({ ...allocationForm, subject_id: e.target.value })} required>
+                      {subjects.map((subject) => (
+                        <option key={subject.subject_id} value={subject.subject_id}>
+                          {subject.subject_code} — {subject.subject_name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <button type="submit" className="ap-confirm-btn">Allocate faculty</button>
+                </form>
+                <div className="ap-table-wrap" style={{ marginTop: 16 }}>
+                  <table className="ap-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Faculty</th>
+                        <th>Subject</th>
+                        <th>Dept</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allocations.map((row) => (
+                        <tr key={row.allocation_id}>
+                          <td>{row.allocation_id}</td>
+                          <td>
+                            {row.faculty?.full_name} ({row.faculty?.employee_id})
+                          </td>
+                          <td>
+                            {row.subject?.subject_code} — {row.subject?.subject_name}
+                          </td>
+                          <td>{row.subject?.dept_id}</td>
+                          <td>
+                            <button type="button" className="ap-text-action" onClick={() => handleDeleteAllocation(row.allocation_id)}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {allocations.length === 0 ? (
+                        <tr>
+                          <td colSpan={5}>No faculty–subject allocations yet.</td>
                         </tr>
                       ) : null}
                     </tbody>

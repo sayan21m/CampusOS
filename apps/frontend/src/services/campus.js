@@ -290,6 +290,65 @@ export async function changePassword({ currentPassword, newPassword }) {
   return data;
 }
 
+export async function fetchUsers(params = {}) {
+  const { data } = await api.get("/users", { params });
+  return Array.isArray(data.users) ? data.users : [];
+}
+
+export async function createManagedUser(payload) {
+  const { data } = await api.post("/users", payload);
+  return data.user;
+}
+
+export async function updateManagedUser(userId, payload) {
+  const { data } = await api.patch(`/users/${userId}`, payload);
+  return data.user;
+}
+
+export async function deactivateUser(userId) {
+  const { data } = await api.patch(`/users/${userId}/deactivate`);
+  return data.user;
+}
+
+export async function activateUser(userId) {
+  const { data } = await api.patch(`/users/${userId}/activate`);
+  return data.user;
+}
+
+export async function adminResetUserPassword(userId, newPassword) {
+  const { data } = await api.post(`/users/${userId}/reset-password`, {
+    newPassword,
+  });
+  return data;
+}
+
+export async function bulkCreateUsersCsv(fileOrText) {
+  if (typeof fileOrText === "string") {
+    const { data } = await api.post("/users/bulk-csv", { csv: fileOrText });
+    return data;
+  }
+
+  const form = new FormData();
+  form.append("file", fileOrText);
+  const { data } = await api.post("/users/bulk-csv", form);
+  return data;
+}
+
+export async function fetchAllocations(params = {}) {
+  const { data } = await api.get("/allocations", { params });
+  return Array.isArray(data.allocations) ? data.allocations : [];
+}
+
+export async function createAllocation({ faculty_id, subject_id }) {
+  const { data } = await api.post("/allocations", { faculty_id, subject_id });
+  return data.allocation;
+}
+
+export async function deleteAllocation(allocationId) {
+  const { data } = await api.delete(`/allocations/${allocationId}`);
+  return data;
+}
+
 export async function fetchWeekTimetable(anchorDate = new Date()) {
   const start = new Date(anchorDate);
   const day = start.getDay();

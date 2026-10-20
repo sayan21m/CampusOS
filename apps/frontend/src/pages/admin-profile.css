@@ -516,6 +516,12 @@
   align-self: end;
 }
 
+.ap-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 900px) {
   .ap-split {
     grid-template-columns: 1fr;
