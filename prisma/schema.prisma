@@ -21,6 +21,7 @@ model User {
   passwordResetTokens passwordResetToken[]
   notices             Notice[]
   calendarEntries     AcademicCalendar[]
+  notifications       Notification[]
 
   student Student?
   faculty Faculty?
@@ -288,4 +289,32 @@ model Notes {
   @@index([subject_id, unit_number])
   @@index([uploaded_by])
   @@index([academic_year])
+}
+
+enum NotificationType {
+  ASSIGNMENT_PUBLISHED
+  ASSIGNMENT_DEADLINE_48H
+  ASSIGNMENT_DEADLINE_12H
+  ASSIGNMENT_GRADED
+  NOTICE_PUBLISHED
+  NOTES_UPLOADED
+}
+
+model Notification {
+  notification_id Int              @id @default(autoincrement())
+  user_id         Int
+  title           String
+  message         String
+  type            NotificationType
+  is_read         Boolean          @default(false)
+  reference_id    Int?
+  email_sent      Boolean          @default(false)
+  created_at      DateTime         @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, type, reference_id])
+  @@index([user_id, is_read])
+  @@index([user_id, created_at])
+  @@index([type, reference_id])
 }
