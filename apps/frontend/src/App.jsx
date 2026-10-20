@@ -63,7 +63,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-       <Route
+      <Route
         path="/faculty-dashboard"
         element={
           <ProtectedRoute>
@@ -71,9 +71,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-
-    
-       <Route
+      <Route
         path="/admin-profile"
         element={
           <ProtectedRoute>
@@ -81,7 +79,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
       <Route path="/faculty_profile" element={<Navigate to="/faculty-profile" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -32,7 +32,7 @@ const DEPARTMENT = {
 const ADMIN = {
   name: "Seed Admin",
   email: "seed.admin@campusos.local",
-  role: "ADMINISTRATOR",
+  role: "ADMIN",
 };
 
 const FACULTY = [

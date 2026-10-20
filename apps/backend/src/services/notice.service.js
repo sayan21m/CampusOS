@@ -164,7 +164,7 @@ export async function getNotice(user_id) {
     throw createError("User not found", 404);
   }
 
-  if (user.role === "ADMINISTRATOR") {
+  if (user.role === "ADMIN") {
     const notice = await prisma.notice.findMany();
     return sortNotices(notice);
   } else if (user.role === "FACULTY") {

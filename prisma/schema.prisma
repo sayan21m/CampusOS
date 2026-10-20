@@ -44,10 +44,11 @@ model Department {
   dept_code      String @unique
   hod_faculty_id Int?   @unique
 
-  hod      Faculty?  @relation("DepartmentHOD", fields: [hod_faculty_id], references: [faculty_id])
-  students Student[]
-  faculty  Faculty[] @relation("DepartmentFaculty")
-  subjects Subject[]
+  hod            Faculty?        @relation("DepartmentHOD", fields: [hod_faculty_id], references: [faculty_id])
+  students       Student[]
+  faculty        Faculty[]       @relation("DepartmentFaculty")
+  subjects       Subject[]
+  timetableSlots TimetableSlot[]
 }
 
 model Student {
@@ -79,10 +80,13 @@ model Faculty {
   phone       String?
   photo_url   String?
 
-  user            User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  department      Department   @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
-  hodOfDepartment Department?  @relation("DepartmentHOD")
-  assignments     Assignment[]
+  user                  User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department            Department           @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
+  hodOfDepartment       Department?          @relation("DepartmentHOD")
+  assignments           Assignment[]
+  regularTimetableSlots TimetableSlot[]      @relation("RegularTimetableFaculty")
+  timetableExceptions   TimetableException[] @relation("ExceptionReplacementFaculty")
+  notes                 Notes[]
 
   @@index([dept_id])
 }
@@ -96,8 +100,10 @@ model Subject {
   credits      Int
   is_active    Boolean @default(true)
 
-  department  Department   @relation(fields: [dept_id], references: [dept_id])
-  assignments Assignment[]
+  department     Department      @relation(fields: [dept_id], references: [dept_id])
+  assignments    Assignment[]
+  timetableSlots TimetableSlot[]
+  notes          Notes[]
 
   @@index([dept_id])
 }
@@ -161,4 +167,96 @@ model Notice {
   @@index([created_by])
   @@index([target_type, target_value])
   @@index([created_at])
+}
+
+enum TimetableExceptionType {
+  ROOM_TIME_CHANGE
+  FACULTY_SUBSTITUTION
+  CANCELLED
+  RESCHEDULED
+}
+
+model TimetableSlot {
+  timetable_id Int      @id @default(autoincrement())
+  subject_id   Int
+  faculty_id   Int
+  dept_id      Int
+  semester     Int
+  section      String
+  day_of_week  Int
+  period       Int
+  room         String
+  start_time   String
+  end_time     String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  subject    Subject    @relation(fields: [subject_id], references: [subject_id])
+  faculty    Faculty    @relation("RegularTimetableFaculty", fields: [faculty_id], references: [faculty_id])
+  department Department @relation(fields: [dept_id], references: [dept_id])
+
+  exceptions TimetableException[]
+
+  @@unique([dept_id, semester, section, day_of_week, period])
+  @@index([faculty_id, day_of_week])
+  @@index([dept_id, semester, section])
+}
+
+model TimetableException {
+  timetable_exception_id Int                    @id @default(autoincrement())
+  timetable_id           Int
+  exception_type         TimetableExceptionType
+
+  original_date    DateTime  @db.Date
+  rescheduled_date DateTime? @db.Date
+
+  replacement_faculty_id Int?
+  period                 Int?
+  room                   String?
+  start_time             String?
+  end_time               String?
+
+  reason     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  timetable           TimetableSlot @relation(fields: [timetable_id], references: [timetable_id], onDelete: Cascade)
+  replacement_faculty Faculty?      @relation("ExceptionReplacementFaculty", fields: [replacement_faculty_id], references: [faculty_id])
+
+  @@unique([timetable_id, original_date])
+  @@index([original_date])
+  @@index([rescheduled_date])
+  @@index([replacement_faculty_id, rescheduled_date])
+}
+
+enum MaterialType {
+  LECTURE_NOTES
+  PRESENTATIONS
+  LAB_MANUALS
+  REFERENCE_MATERIAL
+  PREVIOUS_YEAR_PAPERS
+}
+
+model Notes {
+  notes_id    Int @id @default(autoincrement())
+  subject_id  Int
+  uploaded_by Int
+
+  title           String
+  description     String?
+  unit_number     Int
+  material_type   MaterialType
+  storage_key     String
+  file_size_bytes BigInt
+  academic_year   Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subject Subject @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+  faculty Faculty @relation(fields: [uploaded_by], references: [faculty_id], onDelete: Cascade)
+
+  @@index([subject_id, unit_number])
+  @@index([uploaded_by])
+  @@index([academic_year])
 }
