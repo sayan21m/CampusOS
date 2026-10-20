@@ -1,4 +1,8 @@
 import prisma from "../config/db.js";
+import {
+  notifyNoticePublished,
+  safeNotify,
+} from "./notification.service.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -122,6 +126,8 @@ export async function createNotice(noticeData, user_id) {
       target_value,
     },
   });
+
+  await safeNotify(() => notifyNoticePublished(notice), "notice-published");
 
   return {
     notice_id: notice.notice_id,

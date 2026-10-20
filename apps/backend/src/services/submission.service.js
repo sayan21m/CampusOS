@@ -1,5 +1,9 @@
 import prisma from "../config/db.js";
 import {
+  notifyAssignmentGraded,
+  safeNotify,
+} from "./notification.service.js";
+import {
   saveSubmissionFile,
   deleteSubmissionFile,
   getSubmissionFile,
@@ -236,6 +240,11 @@ export async function gradeSubmission(submission_id, faculty_id, marks, feedback
       status: "Checked",
     },
   });
+
+  await safeNotify(
+    () => notifyAssignmentGraded(updatedSubmission, assignment),
+    "assignment-graded"
+  );
 
   return updatedSubmission;
 }
