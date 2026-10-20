@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   GraduationCap, LayoutDashboard, Users, BookOpen,
   CalendarDays, Megaphone, Settings, LogOut,
