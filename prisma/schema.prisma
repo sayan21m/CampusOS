@@ -86,6 +86,7 @@ model Faculty {
   assignments           Assignment[]
   regularTimetableSlots TimetableSlot[]      @relation("RegularTimetableFaculty")
   timetableExceptions   TimetableException[] @relation("ExceptionReplacementFaculty")
+  notes                 Notes[]
 
   @@index([dept_id])
 }
@@ -102,6 +103,7 @@ model Subject {
   department     Department      @relation(fields: [dept_id], references: [dept_id])
   assignments    Assignment[]
   timetableSlots TimetableSlot[]
+  notes          Notes[]
 
   @@index([dept_id])
 }
@@ -225,4 +227,36 @@ model TimetableException {
   @@index([original_date])
   @@index([rescheduled_date])
   @@index([replacement_faculty_id, rescheduled_date])
+}
+
+enum MaterialType {
+  LECTURE_NOTES
+  PRESENTATIONS
+  LAB_MANUALS
+  REFERENCE_MATERIAL
+  PREVIOUS_YEAR_PAPERS
+}
+
+model Notes {
+  notes_id    Int @id @default(autoincrement())
+  subject_id  Int
+  uploaded_by Int
+
+  title           String
+  description     String?
+  unit_number     Int
+  material_type   MaterialType
+  storage_key     String
+  file_size_bytes BigInt
+  academic_year   Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subject Subject @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+  faculty Faculty @relation(fields: [uploaded_by], references: [faculty_id], onDelete: Cascade)
+
+  @@index([subject_id, unit_number])
+  @@index([uploaded_by])
+  @@index([academic_year])
 }
