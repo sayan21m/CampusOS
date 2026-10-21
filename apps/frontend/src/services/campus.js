@@ -148,6 +148,52 @@ export async function fetchFacultyAssignments() {
       : [];
 }
 
+export async function createAssignment(payload) {
+  const { data } = await api.post("/assignments", payload);
+  return data.assignment ?? data;
+}
+
+export async function fetchAssignmentSubmissions(assignmentId) {
+  const { data } = await api.get(`/submissions/assignments/${assignmentId}`);
+  return data;
+}
+
+export async function gradeSubmission(submissionId, { marks, feedback }) {
+  const { data } = await api.patch(`/submissions/${submissionId}/grade`, {
+    marks,
+    ...(feedback ? { feedback } : {}),
+  });
+  return data.submission ?? data;
+}
+
+function triggerBlobDownload(response, fallbackName) {
+  const disposition = response.headers["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || fallbackName;
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function downloadSubmissionFile(submissionId) {
+  const response = await api.get(`/submissions/${submissionId}/download`, {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response, `submission-${submissionId}.bin`);
+}
+
+export async function downloadAllSubmissionFiles(assignmentId) {
+  const response = await api.get(`/submissions/assignments/${assignmentId}/download`, {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response, `assignment-${assignmentId}-submissions.zip`);
+}
+
 export async function fetchSubjects() {
   const { data } = await api.get("/subjects");
   return Array.isArray(data.subjects) ? data.subjects : [];
