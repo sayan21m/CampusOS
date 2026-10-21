@@ -1,2 +1,64 @@
-/.idea
-TEMP_ER_Diagram.md
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build / coverage / caches
+dist/
+build/
+coverage/
+.cache/
+.eslintcache
+.prettiercache
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
+tmp_*/
+TEMP_*.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Runtime
+*.pid
+
+# Prisma generated client (recreate with: npx prisma generate)
+generated/
+prisma/generated/
+
+# Uploads (user-generated content)
+uploads/
+
+# Test / tooling artifacts
+.jest/
+*.lcov
+
+# Local test seed output (users.json + copied docs)
+apps/backend/tests/local-data/
+
+# AI agent synced skills (local tooling, not app source)
+.agents/
+.claude/
+.cursor/
+.devin/
+
+apps/backend/storage/
