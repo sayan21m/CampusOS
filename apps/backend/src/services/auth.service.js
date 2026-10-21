@@ -192,7 +192,11 @@ export async function forgotPassword(email) {
     },
   });
 
-  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const frontendOrigin = (process.env.FRONTEND_URL || "http://localhost:5173")
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
+  const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
 
   try {
     await sendMail({

@@ -20,8 +20,12 @@
   "directories": {
     "doc": "docs"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node apps/backend/src/index.js",
+    "build": "prisma generate",
     "dev": "nodemon apps/backend/src/index.js",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -35,6 +39,12 @@
     "test:e2e:timetable": "node apps/backend/tests/timetable.e2e.js",
     "test:e2e:notes": "node apps/backend/tests/notes.e2e.js",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "db:target": "node scripts/db-target.mjs",
+    "db:target:neon": "PRISMA_ENV=neon node scripts/db-target.mjs",
+    "prisma:status": "prisma migrate status",
+    "prisma:status:neon": "PRISMA_ENV=neon prisma migrate status",
+    "prisma:deploy:neon": "PRISMA_ENV=neon prisma migrate deploy",
     "postinstall": "prisma generate || exit 0"
   },
   "devDependencies": {
