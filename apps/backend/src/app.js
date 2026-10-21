@@ -16,6 +16,8 @@ import timetableRoutes from "./routes/timetable.routes.js";
 import notesRoutes from "./routes/notes.routes.js";
 import calendarRoutes from "./routes/calendar.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import overviewRoutes from "./routes/overview.routes.js";
 
 import cors from "cors";
 
@@ -68,6 +70,8 @@ app.use("/api/v1/timetable", timetableRoutes);
 app.use("/api/v1/notes", notesRoutes);
 app.use("/api/v1/calendar", calendarRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/admin", overviewRoutes);
 
 app.use(handleUploadError);
 
