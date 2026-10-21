@@ -349,6 +349,31 @@ export async function deleteAllocation(allocationId) {
   return data;
 }
 
+export async function fetchAdminOverview() {
+  const { data } = await api.get("/admin/overview");
+  return data.overview || null;
+}
+
+export async function fetchCalendarEntries(params = {}) {
+  const { data } = await api.get("/calendar", { params });
+  return Array.isArray(data.entries) ? data.entries : [];
+}
+
+export async function createCalendarEntry(payload) {
+  const { data } = await api.post("/calendar", payload);
+  return data.entry;
+}
+
+export async function updateCalendarEntry(calendarId, payload) {
+  const { data } = await api.patch(`/calendar/${calendarId}`, payload);
+  return data.entry;
+}
+
+export async function deleteCalendarEntry(calendarId) {
+  const { data } = await api.delete(`/calendar/${calendarId}`);
+  return data;
+}
+
 export async function fetchWeekTimetable(anchorDate = new Date()) {
   const start = new Date(anchorDate);
   const day = start.getDay();

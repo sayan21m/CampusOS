@@ -25,6 +25,7 @@ import {
   bulkCreateUsersCsv,
   changePassword,
   createAllocation,
+  createCalendarEntry,
   createDepartment,
   createManagedUser,
   createNotice,
@@ -32,13 +33,17 @@ import {
   createTimetableSlot,
   deactivateUser,
   deleteAllocation,
+  deleteCalendarEntry,
   deleteTimetableSlot,
+  fetchAdminOverview,
   fetchAllocations,
+  fetchCalendarEntries,
   fetchDepartments,
   fetchNotices,
   fetchSubjects,
   fetchTimetableSlots,
   fetchUsers,
+  updateCalendarEntry,
   updateDepartment,
   updateManagedUser,
 } from "../services/campus";
@@ -60,7 +65,7 @@ const shortcuts = [
   { title: "User Management", detail: "Departments and student/faculty profiles", icon: Users, page: "Users" },
   { title: "Subject Management", detail: "Create and list subjects by department", icon: BookOpen, page: "Subjects" },
   { title: "Campus-wide Notices", detail: "Publish targeted institutional notices", icon: Megaphone, page: "Notices" },
-  { title: "Academic Calendar", detail: "Exam/holiday notices and schedule dates", icon: CalendarDays, page: "Calendar" },
+  { title: "Academic Calendar", detail: "Manage holidays, exams, and important dates", icon: CalendarDays, page: "Calendar" },
   { title: "Timetable Management", detail: "Create and review section timetables", icon: Clock3, page: "Timetable" },
 ];
 
@@ -101,11 +106,11 @@ function Field({ label, children }) {
   );
 }
 
-function OverviewBars({ departments, subjects, notices }) {
+function OverviewBars({ users, materials, notices }) {
   const rows = [
-    { label: "Departments", value: departments, color: "#1d6047" },
-    { label: "Subjects", value: subjects, color: "#2e8a61" },
-    { label: "Notices", value: notices, color: "#9ac4a5" },
+    { label: "Active users", value: users, color: "#1d6047" },
+    { label: "Study materials", value: materials, color: "#2e8a61" },
+    { label: "Notices published", value: notices, color: "#9ac4a5" },
   ];
   const max = Math.max(1, ...rows.map((row) => row.value));
 
@@ -142,7 +147,17 @@ export default function AdminProfile() {
   const [notices, setNotices] = useState([]);
   const [users, setUsers] = useState([]);
   const [allocations, setAllocations] = useState([]);
+  const [overview, setOverview] = useState(null);
+  const [calendarEntries, setCalendarEntries] = useState([]);
   const [userFilter, setUserFilter] = useState({ role: "", search: "", isActive: "" });
+  const [calendarForm, setCalendarForm] = useState({
+    title: "",
+    description: "",
+    entry_type: "HOLIDAY",
+    start_date: "",
+    end_date: "",
+    academic_year: String(new Date().getFullYear()),
+  });
 
   const [deptForm, setDeptForm] = useState({ dept_name: "", dept_code: "" });
   const [userForm, setUserForm] = useState({
@@ -213,14 +228,49 @@ export default function AdminProfile() {
       .join("") || "AD";
   }, [displayName]);
 
-  const calendarNotices = useMemo(() => {
-    return notices.filter((notice) => {
-      const category = String(notice.tag || "").toLowerCase();
-      return ["exam", "holiday", "event", "academic"].includes(category);
-    });
-  }, [notices]);
+  const userCounts = useMemo(() => {
+    return {
+      active: overview?.users?.active ?? users.filter((row) => row.isActive).length,
+      students: overview?.users?.students ?? users.filter((row) => row.role === "STUDENT").length,
+      faculty: overview?.users?.faculty ?? users.filter((row) => row.role === "FACULTY").length,
+      notices: overview?.notices?.total ?? notices.length,
+      materials: overview?.materials?.total ?? 0,
+      departments: overview?.departments?.total ?? departments.length,
+      subjects: overview?.subjects?.active ?? subjects.length,
+    };
+  }, [overview, users, notices, departments, subjects]);
 
-  const academicDates = useMemo(() => calendarNotices.slice(0, 8), [calendarNotices]);
+  const upcomingDates = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return [...calendarEntries]
+      .filter((item) => String(item.end_date || item.start_date) >= today)
+      .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)))
+      .slice(0, 8);
+  }, [calendarEntries]);
+
+  const recentActivity = useMemo(() => {
+    const noticeItems = notices.map((notice) => ({
+      id: `notice-${notice.id}`,
+      title: notice.title,
+      detail: notice.content?.slice(0, 120) || notice.tag,
+      date: notice.date || "Recent",
+      kind: "Notice",
+    }));
+    const userItems = users.slice(0, 8).map((row) => ({
+      id: `user-${row.user_id}`,
+      title: row.name,
+      detail: `${row.role} · ${row.email}`,
+      date: row.createdAt
+        ? new Date(row.createdAt).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "Recent",
+      kind: "User",
+    }));
+    return [...noticeItems, ...userItems].slice(0, 6);
+  }, [notices, users]);
 
   const facultyUsers = useMemo(
     () => users.filter((row) => row.role === "FACULTY" && row.faculty),
@@ -234,20 +284,34 @@ export default function AdminProfile() {
     if (nextFilter.isActive) params.isActive = nextFilter.isActive;
     const rows = await fetchUsers(params);
     setUsers(rows);
+    return rows;
+  }
+
+  async function refreshCalendar() {
+    const year = Number(calendarForm.academic_year) || new Date().getFullYear();
+    const entries = await fetchCalendarEntries({
+      academic_year: year,
+      include_deadlines: false,
+    }).catch(() => []);
+    setCalendarEntries(entries);
   }
 
   async function refreshCore() {
-    const [deptRows, subjectRows, noticeRows, allocationRows] = await Promise.all([
+    const [deptRows, subjectRows, noticeRows, allocationRows, overviewRow] = await Promise.all([
       fetchDepartments(),
       fetchSubjects(),
       fetchNotices(),
       fetchAllocations().catch(() => []),
+      fetchAdminOverview().catch(() => null),
     ]);
     setDepartments(deptRows);
     setSubjects(subjectRows);
     setNotices(noticeRows);
     setAllocations(allocationRows);
-    await refreshUsers();
+    setOverview(overviewRow);
+    const userRows = await refreshUsers();
+    await refreshCalendar();
+    const firstFaculty = (userRows || []).find((row) => row.role === "FACULTY" && row.faculty);
 
     if (!userForm.dept_id && deptRows[0]) {
       setUserForm((prev) => ({ ...prev, dept_id: String(deptRows[0].dept_id) }));
@@ -264,6 +328,14 @@ export default function AdminProfile() {
     }
     if (!allocationForm.subject_id && subjectRows[0]) {
       setAllocationForm((prev) => ({ ...prev, subject_id: String(subjectRows[0].subject_id) }));
+    }
+    if (firstFaculty) {
+      setAllocationForm((prev) =>
+        prev.faculty_id ? prev : { ...prev, faculty_id: String(firstFaculty.faculty.faculty_id) }
+      );
+      setTtForm((prev) =>
+        prev.faculty_id ? prev : { ...prev, faculty_id: String(firstFaculty.faculty.faculty_id) }
+      );
     }
   }
 
@@ -558,6 +630,48 @@ export default function AdminProfile() {
     }
   }
 
+  async function handleCreateCalendarEntry(event) {
+    event.preventDefault();
+    try {
+      await createCalendarEntry({
+        title: calendarForm.title,
+        description: calendarForm.description || null,
+        entry_type: calendarForm.entry_type,
+        start_date: calendarForm.start_date,
+        end_date: calendarForm.end_date || calendarForm.start_date,
+        academic_year: Number(calendarForm.academic_year),
+      });
+      setCalendarForm((prev) => ({ ...prev, title: "", description: "" }));
+      await refreshCalendar();
+      flashSuccess("Calendar entry created.");
+    } catch (err) {
+      flashError(err, "Could not create calendar entry.");
+    }
+  }
+
+  async function handleRenameCalendarEntry(entry) {
+    const nextTitle = window.prompt("New title", entry.title);
+    if (!nextTitle || nextTitle.trim() === entry.title) return;
+    try {
+      await updateCalendarEntry(entry.calendar_id, { title: nextTitle.trim() });
+      await refreshCalendar();
+      flashSuccess("Calendar entry updated.");
+    } catch (err) {
+      flashError(err, "Could not update calendar entry.");
+    }
+  }
+
+  async function handleDeleteCalendarEntry(calendarId) {
+    if (!window.confirm(`Delete calendar entry #${calendarId}?`)) return;
+    try {
+      await deleteCalendarEntry(calendarId);
+      await refreshCalendar();
+      flashSuccess("Calendar entry deleted.");
+    } catch (err) {
+      flashError(err, "Could not delete calendar entry.");
+    }
+  }
+
   function confirmSignOut() {
     logout();
     navigate("/login", { replace: true });
@@ -639,7 +753,7 @@ export default function AdminProfile() {
               <section className="ap-welcome">
                 <div>
                   <h2>Welcome back, {displayName}</h2>
-                  <p>Live campus overview from departments, subjects, and notices.</p>
+                  <p>Live campus overview: user counts, recent activity, and management shortcuts.</p>
                 </div>
                 <span className="ap-date-pill">
                   <CalendarDays size={15} /> {todayLabel}
@@ -647,9 +761,30 @@ export default function AdminProfile() {
               </section>
 
               <section className="ap-stats-grid">
-                <StatCard icon={Building2} title="Departments" value={departments.length} hint="From departments API" />
-                <StatCard icon={FileText} title="Active Subjects" value={subjects.length} hint="From subjects API" />
-                <StatCard icon={Bell} title="Notices Published" value={notices.length} hint="Visible to your account" />
+                <StatCard
+                  icon={Users}
+                  title="Active Users"
+                  value={userCounts.active}
+                  hint={`${userCounts.students} students · ${userCounts.faculty} faculty`}
+                />
+                <StatCard
+                  icon={Bell}
+                  title="Notices Published"
+                  value={userCounts.notices}
+                  hint={overview ? "From admin overview" : "From published notices"}
+                />
+                <StatCard
+                  icon={FileText}
+                  title="Study Materials"
+                  value={userCounts.materials}
+                  hint="Uploaded notes"
+                />
+                <StatCard
+                  icon={Building2}
+                  title="Departments"
+                  value={userCounts.departments}
+                  hint={`${userCounts.subjects} active subjects`}
+                />
               </section>
 
               <section className="ap-main-grid">
@@ -664,19 +799,19 @@ export default function AdminProfile() {
                     </button>
                   </div>
                   <div className="ap-activity-list">
-                    {notices.length === 0 ? (
-                      <p className="ap-empty">No notices yet. Publish one from Notices.</p>
+                    {recentActivity.length === 0 ? (
+                      <p className="ap-empty">No recent activity yet. Create a user or publish a notice.</p>
                     ) : (
-                      notices.slice(0, 5).map((notice) => (
-                        <div className="ap-activity-item" key={notice.id}>
+                      recentActivity.map((item) => (
+                        <div className="ap-activity-item" key={item.id}>
                           <div className="ap-activity-icon">
-                            <Megaphone size={18} />
+                            {item.kind === "User" ? <Users size={18} /> : <Megaphone size={18} />}
                           </div>
                           <div className="ap-activity-copy">
-                            <strong>{notice.title}</strong>
-                            <p>{notice.content?.slice(0, 120) || notice.tag}</p>
+                            <strong>{item.title}</strong>
+                            <p>{item.detail}</p>
                           </div>
-                          <time>{notice.date || "Recent"}</time>
+                          <time>{item.date}</time>
                         </div>
                       ))
                     )}
@@ -725,19 +860,22 @@ export default function AdminProfile() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(academicDates.length ? academicDates : notices.slice(0, 5)).map((item) => (
-                          <tr key={item.id}>
-                            <td>{item.date || "—"}</td>
-                            <td>{item.title}</td>
-                            <td>{item.content?.slice(0, 80) || "—"}</td>
+                        {upcomingDates.map((item) => (
+                          <tr key={item.calendar_id}>
                             <td>
-                              <span className="ap-tag">{item.tag || "Notice"}</span>
+                              {item.start_date}
+                              {item.end_date && item.end_date !== item.start_date ? ` – ${item.end_date}` : ""}
+                            </td>
+                            <td>{item.title}</td>
+                            <td>{item.description || "—"}</td>
+                            <td>
+                              <span className="ap-tag">{item.entry_type}</span>
                             </td>
                           </tr>
                         ))}
-                        {notices.length === 0 ? (
+                        {upcomingDates.length === 0 ? (
                           <tr>
-                            <td colSpan={4}>No academic dates available yet.</td>
+                            <td colSpan={4}>No academic calendar entries yet.</td>
                           </tr>
                         ) : null}
                       </tbody>
@@ -754,9 +892,9 @@ export default function AdminProfile() {
                     <span className="ap-date-pill">Live counts</span>
                   </div>
                   <OverviewBars
-                    departments={departments.length}
-                    subjects={subjects.length}
-                    notices={notices.length}
+                    users={userCounts.active}
+                    materials={userCounts.materials}
+                    notices={userCounts.notices}
                   />
                 </article>
               </section>
@@ -1074,7 +1212,7 @@ export default function AdminProfile() {
                   </div>
                 </div>
                 <p className="ap-help">
-                  Allocations are independent of timetable slots. Notes upload authorization accepts either an allocation or a timetable allotment.
+                  Optional faculty–subject allocation beyond timetable slots. If the allocation API is not available, timetable allotment still works.
                 </p>
                 <form className="ap-form-grid" onSubmit={handleCreateAllocation}>
                   <Field label="Faculty">
@@ -1185,8 +1323,15 @@ export default function AdminProfile() {
                       ))}
                     </select>
                   </Field>
-                  <Field label="Faculty ID">
-                    <input type="number" value={ttForm.faculty_id} onChange={(e) => setTtForm({ ...ttForm, faculty_id: e.target.value })} required />
+                  <Field label="Faculty">
+                    <select value={ttForm.faculty_id} onChange={(e) => setTtForm({ ...ttForm, faculty_id: e.target.value })} required>
+                      <option value="">Select faculty</option>
+                      {facultyUsers.map((row) => (
+                        <option key={row.user_id} value={row.faculty.faculty_id}>
+                          {row.faculty.full_name} ({row.faculty.employee_id})
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                   <Field label="Department">
                     <select value={ttForm.dept_id} onChange={(e) => setTtForm({ ...ttForm, dept_id: e.target.value })} required>
@@ -1280,36 +1425,92 @@ export default function AdminProfile() {
                 <div className="ap-panel-heading">
                   <div>
                     <CalendarDays />
-                    <h2>Academic calendar</h2>
+                    <h2>Add calendar entry</h2>
                   </div>
                 </div>
                 <p className="ap-help">
-                  Dedicated Academic Calendar API is not shipped yet. This view uses exam/holiday/event notices as institutional dates.
+                  Holidays, examinations, events, and last working days. Assignment deadlines can also appear on student calendars.
                 </p>
+                <form className="ap-form-grid" onSubmit={handleCreateCalendarEntry}>
+                  <Field label="Title">
+                    <input value={calendarForm.title} onChange={(e) => setCalendarForm({ ...calendarForm, title: e.target.value })} required />
+                  </Field>
+                  <Field label="Type">
+                    <select value={calendarForm.entry_type} onChange={(e) => setCalendarForm({ ...calendarForm, entry_type: e.target.value })}>
+                      {["HOLIDAY", "EXAMINATION", "EVENT", "LAST_WORKING_DAY", "ASSIGNMENT_DEADLINE"].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Start date">
+                    <input type="date" value={calendarForm.start_date} onChange={(e) => setCalendarForm({ ...calendarForm, start_date: e.target.value })} required />
+                  </Field>
+                  <Field label="End date">
+                    <input type="date" value={calendarForm.end_date} onChange={(e) => setCalendarForm({ ...calendarForm, end_date: e.target.value })} />
+                  </Field>
+                  <Field label="Academic year">
+                    <input
+                      value={calendarForm.academic_year}
+                      onChange={(e) => setCalendarForm({ ...calendarForm, academic_year: e.target.value })}
+                      onBlur={() => refreshCalendar()}
+                      required
+                    />
+                  </Field>
+                  <Field label="Description">
+                    <input value={calendarForm.description} onChange={(e) => setCalendarForm({ ...calendarForm, description: e.target.value })} />
+                  </Field>
+                  <button type="submit" className="ap-confirm-btn">Create entry</button>
+                </form>
+              </article>
+
+              <article className="ap-panel">
+                <div className="ap-panel-heading">
+                  <div>
+                    <CalendarDays />
+                    <h2>Academic calendar</h2>
+                  </div>
+                  <button type="button" className="ap-text-action" onClick={() => refreshCalendar().then(() => flashSuccess("Calendar refreshed."))}>
+                    Refresh
+                  </button>
+                </div>
                 <div className="ap-table-wrap">
                   <table className="ap-table">
                     <thead>
                       <tr>
-                        <th>Date</th>
+                        <th>ID</th>
+                        <th>Dates</th>
                         <th>Title</th>
-                        <th>Category</th>
-                        <th>Priority</th>
+                        <th>Type</th>
+                        <th />
                       </tr>
                     </thead>
                     <tbody>
-                      {(calendarNotices.length ? calendarNotices : notices).map((notice) => (
-                        <tr key={notice.id}>
-                          <td>{notice.date || "—"}</td>
-                          <td>{notice.title}</td>
+                      {calendarEntries.map((entry) => (
+                        <tr key={entry.calendar_id}>
+                          <td>{entry.calendar_id}</td>
                           <td>
-                            <span className="ap-tag">{notice.tag || "Notice"}</span>
+                            {entry.start_date}
+                            {entry.end_date && entry.end_date !== entry.start_date ? ` – ${entry.end_date}` : ""}
                           </td>
-                          <td>{notice.priority || (notice.urgent ? "urgent" : "normal")}</td>
+                          <td>{entry.title}</td>
+                          <td>
+                            <span className="ap-tag">{entry.entry_type}</span>
+                          </td>
+                          <td>
+                            <button type="button" className="ap-text-action" onClick={() => handleRenameCalendarEntry(entry)}>
+                              Edit
+                            </button>
+                            <button type="button" className="ap-text-action" onClick={() => handleDeleteCalendarEntry(entry.calendar_id)}>
+                              Delete
+                            </button>
+                          </td>
                         </tr>
                       ))}
-                      {notices.length === 0 ? (
+                      {calendarEntries.length === 0 ? (
                         <tr>
-                          <td colSpan={4}>No calendar-related notices yet.</td>
+                          <td colSpan={5}>No calendar entries for this academic year.</td>
                         </tr>
                       ) : null}
                     </tbody>
