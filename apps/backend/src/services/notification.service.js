@@ -266,6 +266,25 @@ export async function notifyNotesUploaded(notes, subject) {
   });
 }
 
+export async function notifyAttendanceShortage({
+  user_id,
+  subject,
+  percentage,
+  classes_needed,
+}) {
+  const subjectLabel = subject
+    ? `${subject.subject_code} — ${subject.subject_name}`
+    : "a subject";
+
+  return createNotificationsForUsers({
+    userIds: [user_id],
+    title: "Attendance shortage warning",
+    message: `Your attendance in ${subjectLabel} is ${percentage}% (below 75%). Attend ${classes_needed} more consecutive class(es) to return above the threshold.`,
+    type: "ATTENDANCE_SHORTAGE",
+    reference_id: subject?.subject_id ?? null,
+  });
+}
+
 /**
  * Process 48h and 12h assignment deadline reminders for students who have not submitted.
  * Safe to run repeatedly (unique constraint + skipDuplicates).
