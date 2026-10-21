@@ -3,6 +3,8 @@ import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateToken } from "../utils/jwt.js";
 import { sendMail } from "./sendMail.service.js";
 import { ACTIVITY_ACTIONS, logActivity } from "./activity.service.js";
+import { resolvePasswordResetOrigin } from "../config/cors.js";
+import { escapeHtml } from "../utils/html.js";
 import crypto from "crypto";
 
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -178,7 +180,9 @@ export async function forgotPassword(email) {
   });
 
   if (existingToken) {
-    throw new Error("A password reset token is already active");
+    return {
+      message: "If the email exists, a password reset link has been sent.",
+    };
   }
 
   const token = crypto.randomBytes(32).toString("hex");
@@ -192,11 +196,9 @@ export async function forgotPassword(email) {
     },
   });
 
-  const frontendOrigin = (process.env.FRONTEND_URL || "http://localhost:5173")
-    .split(",")[0]
-    .trim()
-    .replace(/\/$/, "");
+  const frontendOrigin = resolvePasswordResetOrigin();
   const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
+  const safeName = escapeHtml(user.name);
 
   try {
     await sendMail({
@@ -206,7 +208,7 @@ export async function forgotPassword(email) {
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
                     <h2 style="color: #222;">Reset your CampusOS password</h2>
 
-                    <p>Hello ${user.name},</p>
+                    <p>Hello ${safeName},</p>
 
                     <p>
                         We received a request to reset the password for your CampusOS account.

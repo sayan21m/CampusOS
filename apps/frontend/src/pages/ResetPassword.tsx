@@ -14,6 +14,7 @@ import {
 import AuthHero, { AuthBrand } from "../components/AuthHero";
 import { useAuth } from "../context/AuthContext";
 import { resetPassword } from "../services/auth";
+import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy";
 import "./Login.css";
 
 export default function ResetPassword(): React.JSX.Element {
@@ -75,8 +76,8 @@ export default function ResetPassword(): React.JSX.Element {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!isPasswordStrong(newPassword)) {
+      setError(PASSWORD_POLICY_MESSAGE);
       return;
     }
 

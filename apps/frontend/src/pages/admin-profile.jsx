@@ -19,6 +19,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy";
 import {
   activateUser,
   adminResetUserPassword,
@@ -400,6 +401,10 @@ export default function AdminProfile() {
 
   async function handleCreateUser(event) {
     event.preventDefault();
+    if (!isPasswordStrong(userForm.password)) {
+      flashError(null, PASSWORD_POLICY_MESSAGE);
+      return;
+    }
     try {
       const payload = {
         role: userForm.role,
@@ -475,8 +480,8 @@ export default function AdminProfile() {
 
   async function handleResetPassword(row) {
     const nextPassword = window.prompt(`New password for ${row.email}`);
-    if (!nextPassword || nextPassword.length < 8) {
-      flashError(null, "Password must be at least 8 characters.");
+    if (!isPasswordStrong(nextPassword)) {
+      flashError(null, PASSWORD_POLICY_MESSAGE);
       return;
     }
     try {
@@ -624,6 +629,10 @@ export default function AdminProfile() {
 
   async function handleChangePassword(event) {
     event.preventDefault();
+    if (!isPasswordStrong(passwordForm.newPassword)) {
+      flashError(null, PASSWORD_POLICY_MESSAGE);
+      return;
+    }
     try {
       await changePassword(passwordForm);
       setPasswordForm({ currentPassword: "", newPassword: "" });
