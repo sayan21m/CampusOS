@@ -6,17 +6,17 @@ Do not put `.env`, `.env.neon`, or connection strings in Git. Set secrets in the
 
 ## Render Web Service
 
-| Setting | Value |
-| --- | --- |
-| Repository | `sayan21m/CampusOS` |
-| Branch | `develop` (or `main` if you release from there) |
-| Root directory | repository root (`.`) — leave blank |
-| Runtime | Node |
-| Node version | `22.x` (`package.json` `engines`) |
-| Build command | `npm ci --include=dev && npm run build` |
-| Start command | `npm start` |
-| Health check path | `/health` |
-| Instance | Free or Starter |
+| Setting           | Value                                           |
+| ----------------- | ----------------------------------------------- |
+| Repository        | `sayan21m/CampusOS`                             |
+| Branch            | `develop` (or `main` if you release from there) |
+| Root directory    | repository root (`.`) — leave blank             |
+| Runtime           | Node                                            |
+| Node version      | `22.x` (`package.json` `engines`)               |
+| Build command     | `npm ci --include=dev && npm run build`         |
+| Start command     | `npm start`                                     |
+| Health check path | `/health`                                       |
+| Instance          | Free or Starter                                 |
 
 `--include=dev` is required so the Prisma **CLI** (a devDependency) can run `prisma generate` during build. `npm run build` is `prisma generate`. `npm start` is `node apps/backend/src/index.js`.
 
@@ -26,15 +26,15 @@ The process listens on `process.env.PORT` (Render sets this) and `0.0.0.0`.
 
 Configure these in **Render → your service → Environment**.
 
-| Name | Required | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Neon **direct** Postgres URL (`sslmode=require`). Not the pooler URL. |
-| `JWT_SECRET` | Yes | Long random secret for access tokens. Use Render “Generate”. |
-| `FRONTEND_URL` | Yes in production | Browser origin(s) allowed by CORS. Example: `https://your-app.vercel.app`. Comma-separated list is supported. The **first** origin is used in password-reset email links. |
-| `NODE_ENV` | Recommended | `production` |
-| `PORT` | No | Render injects this. Do not override unless you know you need to. |
-| `RESEND_API_KEY` | No | Outbound email. If unset, mail is skipped (login still works). |
-| `MAIL_FROM` | If sending mail | Example: `CampusOS <noreply@yourdomain>` |
+| Name             | Required          | Purpose                                                                                                                                                                   |
+| ---------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | Yes               | Neon **direct** Postgres URL (`sslmode=require`). Not the pooler URL.                                                                                                     |
+| `JWT_SECRET`     | Yes               | Long random secret for access tokens. Use Render “Generate”.                                                                                                              |
+| `FRONTEND_URL`   | Yes in production | Browser origin(s) allowed by CORS. Example: `https://your-app.vercel.app`. Comma-separated list is supported. The **first** origin is used in password-reset email links. |
+| `NODE_ENV`       | Recommended       | `production`                                                                                                                                                              |
+| `PORT`           | No                | Render injects this. Do not override unless you know you need to.                                                                                                         |
+| `RESEND_API_KEY` | No                | Outbound email. If unset, mail is skipped (login still works).                                                                                                            |
+| `MAIL_FROM`      | If sending mail   | Example: `CampusOS <noreply@yourdomain>`                                                                                                                                  |
 
 Local Docker Compose and local `.env` are unchanged. Render does not read `.env.neon`; paste the same Neon URL into `DATABASE_URL` on Render.
 
@@ -58,8 +58,10 @@ Local origins are always allowed:
 For production, set `FRONTEND_URL` to the Vercel origin, for example:
 
 ```text
-FRONTEND_URL=https://your-app.vercel.app
+FRONTEND_URL=https://campus-os-gilt.vercel.app
 ```
+
+`https://campus-os-gilt.vercel.app` is also allowlisted in code so a missing `FRONTEND_URL` no longer 500s the live frontend. Still set the env var so password-reset emails use the right host. Unknown origins are rejected without throwing (no Express 500).
 
 If you also use a custom domain:
 
