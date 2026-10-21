@@ -11,6 +11,59 @@ services:
       - "5432:5432"
     volumes:
       - campusos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusos -d campus_os"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: campusos-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://campusos:campusos_dev@postgres:5432/campus_os
+      JWT_SECRET: ${JWT_SECRET:-replace_with_a_long_random_secret}
+      PORT: 3000
+      FRONTEND_URL: http://localhost:8080,http://127.0.0.1:8080
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-CampusOS <onboarding@resend.dev>}
+    ports:
+      - "3000:3000"
+    volumes:
+      - campusos_uploads:/app/apps/backend/storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    container_name: campusos-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
 
 volumes:
   campusos_postgres_data:
+  campusos_uploads:
