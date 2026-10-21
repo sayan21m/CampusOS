@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { newPasswordSchema } from "./password.validator.js";
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
   email: z.string().trim().email("Valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: newPasswordSchema,
 });
 
 export const loginSchema = z.object({
@@ -13,8 +14,7 @@ export const loginSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-
-  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  newPassword: newPasswordSchema,
 });
 
 export const forgotPasswordSchema = z.object({
@@ -23,5 +23,5 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
-  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  newPassword: newPasswordSchema,
 });
