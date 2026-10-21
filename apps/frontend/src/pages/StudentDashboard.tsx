@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchNotices, fetchTodayTimetable } from "../services/campus";
+import { fetchMyAttendance, fetchNotices, fetchTodayTimetable } from "../services/campus";
 import "./Login.css";
 
 interface ClassSchedule {
@@ -25,6 +25,8 @@ export default function StudentDashboard(): React.JSX.Element {
 
   const [todaysClasses, setTodaysClasses] = useState<ClassSchedule[]>([]);
   const [recentNotices, setRecentNotices] = useState<Notice[]>([]);
+  const [attendanceSubjects, setAttendanceSubjects] = useState<any[]>([]);
+  const [attendanceOverall, setAttendanceOverall] = useState<number | null>(null);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -39,13 +41,16 @@ export default function StudentDashboard(): React.JSX.Element {
         setLoadingData(true);
         setError("");
 
-        const [classes, notices] = await Promise.all([
+        const [classes, notices, attendance] = await Promise.all([
           fetchTodayTimetable(),
           fetchNotices(),
+          fetchMyAttendance().catch(() => null),
         ]);
 
         setTodaysClasses(classes);
         setRecentNotices(notices.slice(0, 5));
+        setAttendanceOverall(attendance?.overall?.percentage ?? null);
+        setAttendanceSubjects(Array.isArray(attendance?.subjects) ? attendance.subjects.slice(0, 4) : []);
       } catch (err) {
         setTodaysClasses([]);
         setRecentNotices([]);
@@ -227,7 +232,24 @@ export default function StudentDashboard(): React.JSX.Element {
               <Link to="/attendance" style={{ textDecoration: "none", background: "#f8fbf9", padding: "24px", borderRadius: "20px", border: "1px solid #e2ece8", display: "block", pointerEvents: "auto", cursor: "pointer" }}>
                 <span style={{ fontSize: "1.5rem" }}>📊</span>
                 <h4 style={{ margin: "12px 0 6px", color: "#12241f", fontSize: "1.05rem" }}>Attendance</h4>
-                <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>Monitor subject-wise attendance percentages and logs.</p>
+                <p style={{ margin: "0 0 10px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>
+                  {attendanceOverall == null
+                    ? "Monitor subject-wise attendance percentages and logs."
+                    : `Overall ${attendanceOverall}%`}
+                </p>
+                {attendanceSubjects.length > 0 ? (
+                  <ul style={{ margin: "0 0 16px", paddingLeft: "18px", color: "#4d625c", fontSize: "0.82rem" }}>
+                    {attendanceSubjects.map((subject) => (
+                      <li key={subject.subject_id}>
+                        {subject.subject_code}: {subject.percentage}%
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ margin: "0 0 16px", color: "#4d625c", fontSize: "0.88rem", lineHeight: "1.4" }}>
+                    Subject-wise records open on the attendance page.
+                  </p>
+                )}
                 <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f6b57" }}>View Records →</span>
               </Link>
 

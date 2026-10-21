@@ -349,6 +349,16 @@ export async function deleteAllocation(allocationId) {
   return data;
 }
 
+export async function fetchMyAttendance() {
+  const { data } = await api.get("/attendance/me");
+  return data.summary || {
+    overall: { present: 0, absent: 0, total: 0, percentage: 0, below_threshold: false, classes_needed: 0 },
+    subjects: [],
+    records: [],
+    threshold_percent: 75,
+  };
+}
+
 export async function fetchAdminOverview() {
   const { data } = await api.get("/admin/overview");
   return data.overview || null;
