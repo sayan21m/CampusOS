@@ -20,6 +20,7 @@ import userRoutes from "./routes/user.routes.js";
 import overviewRoutes from "./routes/overview.routes.js";
 import allocationRoutes from "./routes/allocation.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 
 import cors from "cors";
 
@@ -76,6 +77,7 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/admin", overviewRoutes);
 app.use("/api/v1/allocations", allocationRoutes);
 app.use("/api/v1/attendance", attendanceRoutes);
+app.use("/api/v1/search", searchRoutes);
 
 app.use(handleUploadError);
 
