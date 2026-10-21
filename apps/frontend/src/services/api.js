@@ -2,8 +2,32 @@ import axios from "axios";
 
 const TOKEN_KEY = "campusos_token";
 
+const API_PREFIX = "/api/v1";
+
+function withApiPrefix(baseUrl) {
+  return baseUrl.endsWith(API_PREFIX) ? baseUrl : `${baseUrl}${API_PREFIX}`;
+}
+
+function resolveApiBaseUrl() {
+  const configured = String(import.meta.env.VITE_API_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (configured) {
+    return withApiPrefix(configured);
+  }
+
+  if (import.meta.env.DEV) {
+    return `http://localhost:3000${API_PREFIX}`;
+  }
+
+  throw new Error(
+    "VITE_API_URL is required in production (e.g. https://your-service.onrender.com/api/v1)."
+  );
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1",
+  baseURL: resolveApiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {

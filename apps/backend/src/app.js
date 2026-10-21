@@ -1,7 +1,11 @@
 import express from "express";
+import helmet from "helmet";
+import cors from "cors";
 import "./config/db.js";
 
 import { handleUploadError } from "./middleware/upload-error.middleware.js";
+import { authRateLimiter } from "./middleware/rate-limit.middleware.js";
+import { allowedFrontendOrigins, corsOriginDelegate } from "./config/cors.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import deptRoutes from "./routes/department.routes.js";
@@ -22,11 +26,34 @@ import allocationRoutes from "./routes/allocation.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
 import searchRoutes from "./routes/search.routes.js";
 
-import cors from "cors";
-
 const app = express();
 
-app.get("/", (req, res) => {
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+app.use(
+  cors({
+    origin: corsOriginDelegate(allowedFrontendOrigins()),
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+app.get("/", (_req, res) => {
   res.send("CampusOS Backend Running 🚀");
 });
 
@@ -34,39 +61,7 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-app.use(express.json());
-
-const defaultFrontendOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:8080",
-  "http://127.0.0.1:8080",
-];
-
-const configuredFrontendOrigins = (process.env.FRONTEND_URL || "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-const allowedFrontendOrigins = [
-  ...new Set([...defaultFrontendOrigins, ...configuredFrontendOrigins]),
-];
-
-app.use(
-  cors({
-    origin(origin, callback) {
-      // Allow non-browser clients (no Origin) and configured frontend origins.
-      if (!origin || allowedFrontendOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true,
-  })
-);
-app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/auth", authRateLimiter, authRoutes);
 app.use("/api/v1/departments", deptRoutes);
 app.use("/api/v1/students", studentRoutes);
 app.use("/api/v1/profile", profileRoutes);
@@ -86,5 +81,17 @@ app.use("/api/v1/attendance", attendanceRoutes);
 app.use("/api/v1/search", searchRoutes);
 
 app.use(handleUploadError);
+
+app.use((error, _req, res, _next) => {
+  if (res.headersSent) {
+    return;
+  }
+
+  const status = Number(error.statusCode || error.status || 500);
+
+  res.status(status).json({
+    message: status >= 500 ? "Internal server error" : error.message,
+  });
+});
 
 export default app;

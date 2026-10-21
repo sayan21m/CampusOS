@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { newPasswordSchema } from "./password.validator.js";
 
 const phoneSchema = z
   .string()
@@ -19,7 +20,7 @@ export const createUserSchema = z
   .object({
     name: z.string().trim().min(2, "Name must be at least 2 characters"),
     email: z.string().trim().email("Valid email is required"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: newPasswordSchema,
     role: z.enum(["STUDENT", "FACULTY"]),
     roll_number: z.string().trim().min(2).max(15).optional(),
     employee_id: z.string().trim().min(2).max(15).optional(),
@@ -76,5 +77,5 @@ export const updateUserSchema = z
   });
 
 export const adminResetPasswordSchema = z.object({
-  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  newPassword: newPasswordSchema,
 });
