@@ -384,6 +384,22 @@ export async function deleteCalendarEntry(calendarId) {
   return data;
 }
 
+export async function fetchCampusSearch(params = {}) {
+  const { data } = await api.get("/search", { params });
+  const groups = Array.isArray(data.groups) ? data.groups : [];
+  return {
+    query: data.query || params.q || "",
+    count: data.count || 0,
+    groups,
+    results: data.results || {},
+  };
+}
+
+export async function fetchRecentSearches() {
+  const { data } = await api.get("/search/recent");
+  return Array.isArray(data.recent) ? data.recent : [];
+}
+
 export async function fetchWeekTimetable(anchorDate = new Date()) {
   const start = new Date(anchorDate);
   const day = start.getDay();
