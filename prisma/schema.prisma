@@ -16,13 +16,17 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
   lastLogin           DateTime?
+  photo_url           String?
   createdAt           DateTime  @default(now())
 
-  passwordResetTokens passwordResetToken[]
-  notices             Notice[]
-  calendarEntries     AcademicCalendar[]
-  notifications       Notification[]
-  searchHistory       SearchHistory[]
+  passwordResetTokens       passwordResetToken[]
+  notices                   Notice[]
+  calendarEntries           AcademicCalendar[]
+  notifications             Notification[]
+  searchHistory             SearchHistory[]
+  noticeReads               NoticeRead[]
+  notificationPreferences   NotificationPreference[]
+  activityLogs              ActivityLog[]
 
   student Student?
   faculty Faculty?
@@ -185,11 +189,51 @@ model Notice {
   attachment_url String?
   created_at     DateTime @default(now())
 
-  user User @relation(fields: [created_by], references: [user_id], onDelete: Cascade)
+  user  User         @relation(fields: [created_by], references: [user_id], onDelete: Cascade)
+  reads NoticeRead[]
 
   @@index([created_by])
   @@index([target_type, target_value])
   @@index([created_at])
+}
+
+model NoticeRead {
+  notice_read_id Int      @id @default(autoincrement())
+  notice_id      Int
+  user_id        Int
+  read_at        DateTime @default(now())
+
+  notice Notice @relation(fields: [notice_id], references: [notice_id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([notice_id, user_id])
+  @@index([user_id])
+  @@index([notice_id])
+}
+
+model NotificationPreference {
+  preference_id Int      @id @default(autoincrement())
+  user_id       Int
+  category      String
+  email_enabled Boolean  @default(true)
+  updated_at    DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, category])
+  @@index([user_id])
+}
+
+model ActivityLog {
+  activity_id Int      @id @default(autoincrement())
+  user_id     Int
+  action      String
+  detail      String?
+  created_at  DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
 }
 
 enum TimetableExceptionType {

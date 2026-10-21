@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchMyAttendance, fetchNotices, fetchTodayTimetable } from "../services/campus";
+import { fetchMyAssignments, fetchMyAttendance, fetchNotices, fetchTodayTimetable } from "../services/campus";
+import { describeDeadline, getDeadlineTone } from "../components/student-dashboard/dashboardUtils";
 import "./Login.css";
 
 interface ClassSchedule {
@@ -27,6 +28,7 @@ export default function StudentDashboard(): React.JSX.Element {
   const [recentNotices, setRecentNotices] = useState<Notice[]>([]);
   const [attendanceSubjects, setAttendanceSubjects] = useState<any[]>([]);
   const [attendanceOverall, setAttendanceOverall] = useState<number | null>(null);
+  const [pendingAssignments, setPendingAssignments] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -41,19 +43,27 @@ export default function StudentDashboard(): React.JSX.Element {
         setLoadingData(true);
         setError("");
 
-        const [classes, notices, attendance] = await Promise.all([
+        const [classes, notices, attendance, assignments] = await Promise.all([
           fetchTodayTimetable(),
           fetchNotices(),
           fetchMyAttendance().catch(() => null),
+          fetchMyAssignments().catch(() => []),
         ]);
 
         setTodaysClasses(classes);
         setRecentNotices(notices.slice(0, 5));
         setAttendanceOverall(attendance?.overall?.percentage ?? null);
         setAttendanceSubjects(Array.isArray(attendance?.subjects) ? attendance.subjects.slice(0, 4) : []);
+        setPendingAssignments(
+          (Array.isArray(assignments) ? assignments : [])
+            .filter((item) => item.status === "Pending")
+            .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+            .slice(0, 5)
+        );
       } catch (err) {
         setTodaysClasses([]);
         setRecentNotices([]);
+        setPendingAssignments([]);
         setError("Unable to load live dashboard data from the CampusOS API.");
       } finally {
         setLoadingData(false);
@@ -155,6 +165,66 @@ export default function StudentDashboard(): React.JSX.Element {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: "36px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#12241f", fontWeight: 800 }}>
+                  📝 Pending Assignments
+                </h3>
+                <Link to="/assignments" style={{ fontSize: "0.8rem", color: "#0f6b57", fontWeight: 700, textDecoration: "none" }}>View All →</Link>
+              </div>
+
+              {loadingData ? (
+                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
+                  Loading assignments...
+                </div>
+              ) : pendingAssignments.length === 0 ? (
+                <div style={{ padding: "24px", textAlign: "center", color: "#6a827b", background: "#f8fbf9", borderRadius: "14px", border: "1px solid #e2ece8" }}>
+                  No pending assignments. You&apos;re all caught up.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {pendingAssignments.map((item) => {
+                    const tone = getDeadlineTone(item.dueDate);
+                    const palette =
+                      tone === "overdue"
+                        ? { bg: "#fff1f0", color: "#9f2d22", border: "#f3d0cb" }
+                        : tone === "approaching"
+                          ? { bg: "#fff4e5", color: "#8a5300", border: "#f0ddb8" }
+                          : { bg: "#edf7ed", color: "#1f6b3a", border: "#cfe6d3" };
+
+                    return (
+                      <Link
+                        key={item.id}
+                        to="/assignments"
+                        style={{
+                          background: palette.bg,
+                          padding: "16px 20px",
+                          borderRadius: "14px",
+                          border: `1px solid ${palette.border}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: "12px",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <div>
+                          <h4 style={{ margin: "0 0 4px", color: "#12241f", fontSize: "1rem", fontWeight: 700 }}>{item.title}</h4>
+                          <p style={{ margin: 0, color: "#6a827b", fontSize: "0.82rem" }}>
+                            {item.code} · {item.subject}
+                          </p>
+                        </div>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 800, color: palette.color }}>
+                          {describeDeadline(item.dueDate)}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>

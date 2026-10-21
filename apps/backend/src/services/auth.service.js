@@ -2,6 +2,7 @@ import prisma from "../config/db.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { generateToken } from "../utils/jwt.js";
 import { sendMail } from "./sendMail.service.js";
+import { ACTIVITY_ACTIONS, logActivity } from "./activity.service.js";
 import crypto from "crypto";
 
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -102,6 +103,8 @@ export async function loginUser({ email, password }) {
   });
 
   const token = generateToken(user);
+
+  await logActivity(user.user_id, ACTIVITY_ACTIONS.LOGIN, "Signed in");
 
   return {
     token,

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   downloadAttendanceCsv,
@@ -204,10 +204,14 @@ function StudentAttendance() {
 }
 
 function FacultyAttendance() {
-  const [classDate, setClassDate] = useState(toDateKey());
+  const [params] = useSearchParams();
+  const initialClass = Number(params.get("class"));
+  const [classDate, setClassDate] = useState(params.get("date") || toDateKey());
   const [classes, setClasses] = useState<any[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<any[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(
+    Number.isInteger(initialClass) && initialClass > 0 ? initialClass : null
+  );
   const [roster, setRoster] = useState<any>(null);
   const [marks, setMarks] = useState<Record<number, "PRESENT" | "ABSENT">>({});
   const [reportSubjectId, setReportSubjectId] = useState("");
@@ -253,6 +257,10 @@ function FacultyAttendance() {
         const rows = await fetchEffectiveTimetable(classDate);
         setClasses(rows);
         setSelectedId((current) => {
+          const requested = Number(params.get("class"));
+          if (Number.isInteger(requested) && rows.some((row: any) => row.id === requested && !row.cancelled)) {
+            return requested;
+          }
           if (current && rows.some((row: any) => row.id === current)) {
             return current;
           }
@@ -269,7 +277,7 @@ function FacultyAttendance() {
     }
 
     loadClasses();
-  }, [classDate]);
+  }, [classDate, params]);
 
   useEffect(() => {
     async function loadRoster() {

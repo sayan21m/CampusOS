@@ -3,6 +3,11 @@ import {
   notifyNoticePublished,
   safeNotify,
 } from "./notification.service.js";
+import {
+  resolveStoredPath,
+  saveStoredFile,
+} from "./file-storage.service.js";
+import { logActivity, ACTIVITY_ACTIONS } from "./activity.service.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -10,7 +15,24 @@ function createError(message, statusCode) {
   return error;
 }
 
-export async function createNotice(noticeData, user_id) {
+function serializeNotice(notice, extras = {}) {
+  return {
+    notice_id: notice.notice_id,
+    created_by: notice.created_by,
+    title: notice.title,
+    content: notice.content,
+    category: notice.category,
+    priority: notice.priority,
+    target_type: notice.target_type,
+    target_value: notice.target_value,
+    attachment_url: notice.attachment_url ?? null,
+    created_at: notice.created_at,
+    has_attachment: Boolean(notice.attachment_url),
+    ...extras,
+  };
+}
+
+export async function createNotice(noticeData, user_id, file) {
   const user = await prisma.user.findUnique({
     where: {
       user_id,
@@ -115,7 +137,7 @@ export async function createNotice(noticeData, user_id) {
     target_value = `${dept_id}:${section}`;
   }
 
-  const notice = await prisma.notice.create({
+  let notice = await prisma.notice.create({
     data: {
       created_by: user_id,
       title,
@@ -127,18 +149,25 @@ export async function createNotice(noticeData, user_id) {
     },
   });
 
+  if (file?.buffer?.length) {
+    try {
+      const saved = await saveStoredFile({
+        file,
+        directory: `notices/notice-${notice.notice_id}`,
+      });
+      notice = await prisma.notice.update({
+        where: { notice_id: notice.notice_id },
+        data: { attachment_url: saved.path },
+      });
+    } catch (error) {
+      await prisma.notice.delete({ where: { notice_id: notice.notice_id } }).catch(() => {});
+      throw error.statusCode ? error : createError("Unable to store notice attachment", 500);
+    }
+  }
+
   await safeNotify(() => notifyNoticePublished(notice), "notice-published");
 
-  return {
-    notice_id: notice.notice_id,
-    created_by: notice.created_by,
-    title: notice.title,
-    content: notice.content,
-    category: notice.category,
-    priority: notice.priority,
-    target_type: notice.target_type,
-    target_value: notice.target_value,
-  };
+  return serializeNotice(notice);
 }
 
 function sortNotices(notices) {
@@ -159,6 +188,41 @@ function sortNotices(notices) {
   });
 }
 
+async function annotateNotices(notices, user_id, role) {
+  if (!Array.isArray(notices) || notices.length === 0) {
+    return notices;
+  }
+
+  const ids = notices.map((notice) => notice.notice_id);
+  const reads = await prisma.noticeRead.findMany({
+    where: {
+      user_id,
+      notice_id: { in: ids },
+    },
+    select: { notice_id: true },
+  });
+  const readSet = new Set(reads.map((row) => row.notice_id));
+
+  let counts = new Map();
+  if (role === "ADMIN" || role === "FACULTY") {
+    const grouped = await prisma.noticeRead.groupBy({
+      by: ["notice_id"],
+      where: { notice_id: { in: ids } },
+      _count: { notice_id: true },
+    });
+    counts = new Map(grouped.map((row) => [row.notice_id, row._count.notice_id]));
+  }
+
+  return notices.map((notice) =>
+    serializeNotice(notice, {
+      is_read: readSet.has(notice.notice_id),
+      ...(role === "ADMIN" || role === "FACULTY"
+        ? { read_count: counts.get(notice.notice_id) || 0 }
+        : {}),
+    })
+  );
+}
+
 export async function getNotice(user_id) {
   const user = await prisma.user.findUnique({
     where: {
@@ -172,7 +236,7 @@ export async function getNotice(user_id) {
 
   if (user.role === "ADMIN") {
     const notice = await prisma.notice.findMany();
-    return sortNotices(notice);
+    return annotateNotices(sortNotices(notice), user_id, user.role);
   } else if (user.role === "FACULTY") {
     const faculty = await prisma.faculty.findUnique({
       where: {
@@ -199,7 +263,7 @@ export async function getNotice(user_id) {
       },
     });
 
-    return sortNotices(notice);
+    return annotateNotices(sortNotices(notice), user_id, user.role);
   } else if (user.role === "STUDENT") {
     const student = await prisma.student.findUnique({
       where: {
@@ -240,8 +304,70 @@ export async function getNotice(user_id) {
       },
     });
 
-    return sortNotices(notice);
+    return annotateNotices(sortNotices(notice), user_id, user.role);
   } else {
     throw createError("Unsupported user role", 403);
   }
+}
+
+function parseNoticeId(noticeId) {
+  const notice_id = Number(noticeId);
+  if (!Number.isInteger(notice_id) || notice_id < 1) {
+    throw createError("Invalid notice id", 400);
+  }
+  return notice_id;
+}
+
+async function findVisibleNotice(user_id, noticeId) {
+  const notice_id = parseNoticeId(noticeId);
+  const notices = await getNotice(user_id);
+  const notice = notices.find((row) => row.notice_id === notice_id);
+
+  if (!notice) {
+    throw createError("Notice not found", 404);
+  }
+
+  return notice;
+}
+
+export async function markNoticeRead(user_id, noticeId) {
+  const notice = await findVisibleNotice(user_id, noticeId);
+
+  await prisma.noticeRead.upsert({
+    where: {
+      notice_id_user_id: {
+        notice_id: notice.notice_id,
+        user_id,
+      },
+    },
+    create: {
+      notice_id: notice.notice_id,
+      user_id,
+    },
+    update: {
+      read_at: new Date(),
+    },
+  });
+
+  return {
+    notice_id: notice.notice_id,
+    is_read: true,
+  };
+}
+
+export async function getNoticeAttachment(user_id, noticeId) {
+  const notice = await findVisibleNotice(user_id, noticeId);
+
+  if (!notice.attachment_url) {
+    throw createError("Notice has no attachment", 404);
+  }
+
+  const absolutePath = resolveStoredPath(notice.attachment_url);
+  await logActivity(
+    user_id,
+    ACTIVITY_ACTIONS.NOTICE_ATTACHMENT_DOWNLOAD,
+    notice.title
+  );
+
+  return { notice, absolutePath };
 }

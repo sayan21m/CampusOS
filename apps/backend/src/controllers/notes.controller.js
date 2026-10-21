@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createNotes, getNotes, getAccessibleNote, replaceNotes, deleteNotes } from "../services/notes.service.js";
 import { validateNotesFile } from "../validators/notes.validator.js";
+import { ACTIVITY_ACTIONS, logActivity } from "../services/activity.service.js";
 
 export async function createNotesController(req, res) {
   try {
@@ -103,6 +104,8 @@ export async function downloadNotesController(req, res) {
         req.user.userId,
         req.params.notes_id
       );
+
+      await logActivity(req.user.userId, ACTIVITY_ACTIONS.NOTES_DOWNLOAD, note.title);
   
       const extension = path.extname(note.storage_key).toLowerCase();
       const filename = safeDownloadName(note.title, extension);

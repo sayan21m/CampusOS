@@ -25,6 +25,8 @@ import {
   ProfileSection,
   ProfileSkeleton,
 } from "../components/profile/ProfileBlocks";
+import ProfileSettings from "../components/profile/ProfileSettings";
+import { fetchProfilePhotoUrl } from "../services/campus";
 import type { ProfileFact, ProfileField } from "../components/profile/ProfileBlocks";
 
 interface StudentProfileData {
@@ -62,8 +64,10 @@ export default function StudentProfile(): React.JSX.Element {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<StudentProfileData | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +113,15 @@ export default function StudentProfile(): React.JSX.Element {
             accountStatus: Boolean(data.accountStatus),
           });
         }
+
+        if (data.photo_url) {
+          const blobUrl = await fetchProfilePhotoUrl().catch(() => null);
+          if (!cancelled) {
+            setPhotoUrl(blobUrl);
+          }
+        } else if (!cancelled) {
+          setPhotoUrl(null);
+        }
       } catch (err: unknown) {
         if (!cancelled) {
           const message =
@@ -129,7 +142,7 @@ export default function StudentProfile(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, reloadKey]);
 
   const displayName = profile?.name || user?.name || "Student";
 
@@ -202,7 +215,7 @@ export default function StudentProfile(): React.JSX.Element {
         <ProfileHero
           name={profile.name}
           roleLabel="Student"
-          photoUrl={profile.profilePhoto || null}
+          photoUrl={photoUrl || profile.profilePhoto || null}
           isActive={profile.accountStatus}
           facts={facts}
           actions={
@@ -233,6 +246,9 @@ export default function StudentProfile(): React.JSX.Element {
             fields={personalFields}
           />
         </div>
+        <div style={{ marginTop: "16px" }}>
+          <ProfileSettings onPhotoUpdated={() => setReloadKey((value) => value + 1)} />
+        </div>
       </>
     );
   }
@@ -242,7 +258,7 @@ export default function StudentProfile(): React.JSX.Element {
       portalLabel="Student Portal"
       name={displayName}
       subtitle={profile?.rollNumber ? `Roll ${profile.rollNumber}` : "Student"}
-      photoUrl={profile?.profilePhoto || null}
+      photoUrl={photoUrl || profile?.profilePhoto || null}
       navItems={NAV_ITEMS}
       onLogout={logout}
     >
