@@ -52,6 +52,11 @@ export function mapTimetableOccurrence(occurrence) {
         : classStatus(occurrence.start_time, occurrence.end_time),
     period: occurrence.period,
     faculty: occurrence.faculty?.full_name || null,
+    subject_id: occurrence.subject_id || occurrence.subject?.subject_id || null,
+    section: occurrence.section || null,
+    start_time: occurrence.start_time || null,
+    end_time: occurrence.end_time || null,
+    cancelled: occurrence.exception_type === "CANCELLED",
   };
 }
 
@@ -218,7 +223,7 @@ export async function fetchEffectiveTimetable(date) {
   return rows.map(mapTimetableOccurrence);
 }
 
-function toDateKey(date) {
+export function toDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -357,6 +362,47 @@ export async function fetchMyAttendance() {
     records: [],
     threshold_percent: 75,
   };
+}
+
+export async function fetchAttendanceRoster({ timetable_id, class_date }) {
+  const { data } = await api.get("/attendance/class", {
+    params: { timetable_id, class_date },
+  });
+  return data.roster || null;
+}
+
+export async function markClassAttendance(payload) {
+  const { data } = await api.post("/attendance", payload);
+  return data;
+}
+
+export async function updateAttendanceRecord(attendanceId, status) {
+  const { data } = await api.patch(`/attendance/${attendanceId}`, { status });
+  return data.attendance;
+}
+
+export async function fetchAttendanceReport(subjectId, params = {}) {
+  const { data } = await api.get(`/attendance/subject/${subjectId}`, { params });
+  return data.report || null;
+}
+
+export async function downloadAttendanceCsv(subjectId, params = {}) {
+  const response = await api.get(`/attendance/subject/${subjectId}/export`, {
+    params,
+    responseType: "blob",
+  });
+
+  const disposition = response.headers["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || "attendance.csv";
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export async function fetchAdminOverview() {
