@@ -82,13 +82,14 @@ model Faculty {
   phone       String?
   photo_url   String?
 
-  user                  User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  department            Department           @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
-  hodOfDepartment       Department?          @relation("DepartmentHOD")
+  user                  User                       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  department            Department                 @relation("DepartmentFaculty", fields: [dept_id], references: [dept_id])
+  hodOfDepartment       Department?                @relation("DepartmentHOD")
   assignments           Assignment[]
-  regularTimetableSlots TimetableSlot[]      @relation("RegularTimetableFaculty")
-  timetableExceptions   TimetableException[] @relation("ExceptionReplacementFaculty")
+  regularTimetableSlots TimetableSlot[]            @relation("RegularTimetableFaculty")
+  timetableExceptions   TimetableException[]       @relation("ExceptionReplacementFaculty")
   notes                 Notes[]
+  subjectAllocations    FacultySubjectAllocation[]
 
   @@index([dept_id])
 }
@@ -102,12 +103,28 @@ model Subject {
   credits      Int
   is_active    Boolean @default(true)
 
-  department     Department      @relation(fields: [dept_id], references: [dept_id])
-  assignments    Assignment[]
-  timetableSlots TimetableSlot[]
-  notes          Notes[]
+  department         Department                 @relation(fields: [dept_id], references: [dept_id])
+  assignments        Assignment[]
+  timetableSlots     TimetableSlot[]
+  notes              Notes[]
+  facultyAllocations FacultySubjectAllocation[]
 
   @@index([dept_id])
+}
+
+model FacultySubjectAllocation {
+  allocation_id Int      @id @default(autoincrement())
+  faculty_id    Int
+  subject_id    Int
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  faculty Faculty @relation(fields: [faculty_id], references: [faculty_id], onDelete: Cascade)
+  subject Subject @relation(fields: [subject_id], references: [subject_id], onDelete: Cascade)
+
+  @@unique([faculty_id, subject_id])
+  @@index([subject_id])
+  @@index([faculty_id])
 }
 
 model Assignment {

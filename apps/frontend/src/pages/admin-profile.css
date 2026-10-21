@@ -179,7 +179,7 @@
 
 .ap-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 17px;
 }
@@ -377,6 +377,157 @@
 
 .ap-mobile-menu, .ap-mobile-close, .ap-backdrop { display: none; }
 
+.ap-banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ap-banner.is-error {
+  background: #fff1f0;
+  color: #9f2d22;
+}
+
+.ap-banner.is-success {
+  background: #e8f3ef;
+  color: #0f6b57;
+}
+
+.ap-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.ap-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ap-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.ap-form-inline {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+}
+
+.ap-form-inline input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.ap-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ap-field span {
+  color: #5f7469;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ap-field input,
+.ap-field select,
+.ap-field textarea,
+.ap-form-inline input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #172b25;
+  font: inherit;
+}
+
+.ap-field textarea {
+  resize: vertical;
+  grid-column: 1 / -1;
+}
+
+.ap-help,
+.ap-empty {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ap-code {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f3f6f3;
+  color: #31463c;
+  font-size: 11px;
+  overflow: auto;
+}
+
+.ap-overview-bars {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.ap-overview-row {
+  display: grid;
+  gap: 6px;
+}
+
+.ap-overview-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.ap-overview-meta strong {
+  color: #1b3d30;
+}
+
+.ap-overview-meta span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.ap-overview-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e8eee8;
+  overflow: hidden;
+}
+
+.ap-overview-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.ap-confirm-btn {
+  justify-self: start;
+  align-self: end;
+}
+
+.ap-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .ap-split {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ap-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -413,6 +564,7 @@
 @media (max-width: 1100px) {
   .ap-sidebar { width: 210px; flex-basis: 210px; }
   .ap-content { padding: 20px 17px; }
+  .ap-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ap-main-grid { grid-template-columns: 1fr; }
   .ap-stat-card { gap: 12px; padding: 16px; }
   .ap-stat-icon { width: 48px; height: 48px; flex-basis: 48px; }

@@ -18,6 +18,7 @@ import calendarRoutes from "./routes/calendar.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import overviewRoutes from "./routes/overview.routes.js";
+import allocationRoutes from "./routes/allocation.routes.js";
 
 import cors from "cors";
 
@@ -72,6 +73,7 @@ app.use("/api/v1/calendar", calendarRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/admin", overviewRoutes);
+app.use("/api/v1/allocations", allocationRoutes);
 
 app.use(handleUploadError);
 
