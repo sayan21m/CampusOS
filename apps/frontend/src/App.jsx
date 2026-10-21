@@ -11,6 +11,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import FacultyDashboard from "./pages/faculty_dashboard";
 import AdminProfile from "./pages/admin-profile";
 import StudentAssignments from "./pages/StudentAssignments";
+import FacultyAssignments from "./pages/FacultyAssignments";
 import NoticesPage from "./pages/NoticesPage";
 import TimetablePage from "./pages/TimetablePage";
 import NotesPage from "./pages/NotesPage";
@@ -27,6 +28,16 @@ function ProtectedRoute({ children }) {
   }
 
   return children;
+}
+
+function AssignmentsPage() {
+  const { user } = useAuth();
+
+  if (user?.role === "FACULTY") {
+    return <FacultyAssignments />;
+  }
+
+  return <StudentAssignments />;
 }
 
 function RoleDashboard() {
@@ -99,7 +110,7 @@ function App() {
         path="/assignments"
         element={
           <ProtectedRoute>
-            <StudentAssignments />
+            <AssignmentsPage />
           </ProtectedRoute>
         }
       />

@@ -20,6 +20,13 @@ const mockPrisma = {
   notice: {
     create: jest.fn(),
     findMany: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+  noticeRead: {
+    findMany: jest.fn(),
+    groupBy: jest.fn(),
+    upsert: jest.fn(),
   },
 };
 
@@ -33,7 +40,7 @@ jest.unstable_mockModule("../src/utils/jwt.js", () => ({
   verifyToken: mockVerifyToken,
 }));
 
-const { createNotice, getNotice } = await import("../src/services/notice.service.js");
+const { createNotice, getNotice, markNoticeRead } = await import("../src/services/notice.service.js");
 const { createNoticeController, getNoticeController } =
   await import("../src/controllers/notice.controller.js");
 const { authenticate } = await import("../src/middleware/auth.middleware.js");
@@ -99,6 +106,8 @@ async function expectStatus(promise, statusCode) {
 describe("Notice module", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPrisma.noticeRead.findMany.mockResolvedValue([]);
+    mockPrisma.noticeRead.groupBy.mockResolvedValue([]);
   });
 
   describe("createNotice()", () => {
@@ -647,6 +656,47 @@ describe("Notice module", () => {
       const result = await getNotice(1);
 
       expect(result.map((item) => item.notice_id)).toEqual([2, 3, 1]);
+    });
+
+    test("admin notices include read_count and is_read", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.notice.findMany.mockResolvedValue([createdNotice({ notice_id: 7 })]);
+      mockPrisma.noticeRead.findMany.mockResolvedValue([{ notice_id: 7 }]);
+      mockPrisma.noticeRead.groupBy.mockResolvedValue([
+        { notice_id: 7, _count: { notice_id: 4 } },
+      ]);
+
+      const result = await getNotice(1);
+
+      expect(result[0].is_read).toBe(true);
+      expect(result[0].read_count).toBe(4);
+      expect(result[0].has_attachment).toBe(false);
+    });
+  });
+
+  describe("markNoticeRead()", () => {
+    test("upserts a read receipt for a visible notice", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 3, role: "STUDENT" });
+      mockPrisma.student.findUnique.mockResolvedValue({
+        user_id: 3,
+        dept_id: 3,
+        section: "A",
+        semester: 5,
+      });
+      mockPrisma.notice.findMany.mockResolvedValue([createdNotice({ notice_id: 9 })]);
+      mockPrisma.noticeRead.upsert.mockResolvedValue({
+        notice_id: 9,
+        user_id: 3,
+      });
+
+      const result = await markNoticeRead(3, 9);
+
+      expect(mockPrisma.noticeRead.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { notice_id_user_id: { notice_id: 9, user_id: 3 } },
+        })
+      );
+      expect(result).toEqual({ notice_id: 9, is_read: true });
     });
   });
 

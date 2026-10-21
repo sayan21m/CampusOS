@@ -80,6 +80,10 @@ export function mapNotice(notice) {
     urgent: String(notice.priority || "").toLowerCase() === "urgent",
     content: notice.content || "",
     priority: notice.priority || "normal",
+    is_read: Boolean(notice.is_read),
+    read_count: notice.read_count,
+    has_attachment: Boolean(notice.has_attachment || notice.attachment_url),
+    created_by: notice.created_by,
   };
 }
 
@@ -142,6 +146,52 @@ export async function fetchFacultyAssignments() {
     : Array.isArray(data)
       ? data
       : [];
+}
+
+export async function createAssignment(payload) {
+  const { data } = await api.post("/assignments", payload);
+  return data.assignment ?? data;
+}
+
+export async function fetchAssignmentSubmissions(assignmentId) {
+  const { data } = await api.get(`/submissions/assignments/${assignmentId}`);
+  return data;
+}
+
+export async function gradeSubmission(submissionId, { marks, feedback }) {
+  const { data } = await api.patch(`/submissions/${submissionId}/grade`, {
+    marks,
+    ...(feedback ? { feedback } : {}),
+  });
+  return data.submission ?? data;
+}
+
+function triggerBlobDownload(response, fallbackName) {
+  const disposition = response.headers["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || fallbackName;
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function downloadSubmissionFile(submissionId) {
+  const response = await api.get(`/submissions/${submissionId}/download`, {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response, `submission-${submissionId}.bin`);
+}
+
+export async function downloadAllSubmissionFiles(assignmentId) {
+  const response = await api.get(`/submissions/assignments/${assignmentId}/download`, {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response, `assignment-${assignmentId}-submissions.zip`);
 }
 
 export async function fetchSubjects() {
@@ -250,9 +300,77 @@ export async function createSubject(payload) {
   return data.subject;
 }
 
-export async function createNotice(payload) {
+export async function createNotice(payload, file) {
+  if (file) {
+    const form = new FormData();
+    Object.entries(payload || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        form.append(key, value);
+      }
+    });
+    form.append("file", file);
+    const { data } = await api.post("/notices", form);
+    return data.notice ?? data;
+  }
+
   const { data } = await api.post("/notices", payload);
   return data.notice ?? data;
+}
+
+export async function markNoticeRead(noticeId) {
+  const { data } = await api.post(`/notices/${noticeId}/read`);
+  return data;
+}
+
+export async function downloadNoticeAttachment(noticeId, title = "notice") {
+  const response = await api.get(`/notices/${noticeId}/attachment`, {
+    responseType: "blob",
+  });
+
+  const disposition = response.headers["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || `${title}.bin`;
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function uploadProfilePhoto(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post("/profile/photo", form);
+  return data;
+}
+
+export async function fetchProfilePhotoUrl() {
+  const response = await api.get("/profile/photo", { responseType: "blob" });
+  if (!response.data || response.data.size === 0) {
+    return null;
+  }
+  if (String(response.data.type || "").includes("application/json")) {
+    return null;
+  }
+  return window.URL.createObjectURL(response.data);
+}
+
+export async function fetchEmailPreferences() {
+  const { data } = await api.get("/profile/preferences");
+  return Array.isArray(data.preferences) ? data.preferences : [];
+}
+
+export async function updateEmailPreferences(preferences) {
+  const { data } = await api.put("/profile/preferences", { preferences });
+  return Array.isArray(data.preferences) ? data.preferences : [];
+}
+
+export async function fetchActivityLog() {
+  const { data } = await api.get("/profile/activity");
+  return Array.isArray(data.activity) ? data.activity : [];
 }
 
 export async function createStudentProfile(payload) {

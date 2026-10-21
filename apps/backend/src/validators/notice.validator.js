@@ -1,5 +1,56 @@
 import { z } from "zod";
 
+const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/png",
+  "image/jpeg",
+]);
+
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".pptx", ".png", ".jpg", ".jpeg"]);
+
+export function validateNoticeAttachment(file) {
+  if (!file) {
+    return { success: true };
+  }
+
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    return {
+      success: false,
+      message: "File size must not exceed 25 MB",
+    };
+  }
+
+  if (file.size <= 0) {
+    return {
+      success: false,
+      message: "Uploaded file cannot be empty",
+    };
+  }
+
+  const name = String(file.originalname || "");
+  const extension = name.slice(name.lastIndexOf(".")).toLowerCase();
+
+  if (!ALLOWED_EXTENSIONS.has(extension)) {
+    return {
+      success: false,
+      message: "Unsupported file extension",
+    };
+  }
+
+  if (file.mimetype && !ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    return {
+      success: false,
+      message: "Unsupported file MIME type",
+    };
+  }
+
+  return { success: true };
+}
+
 export const createNoticeSchema = z.object({
   title: z
     .string()

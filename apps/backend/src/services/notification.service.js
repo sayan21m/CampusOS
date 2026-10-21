@@ -1,5 +1,6 @@
 import prisma from "../config/db.js";
 import { sendMail } from "./sendMail.service.js";
+import { NOTIFICATION_EMAIL_CATEGORY } from "../validators/profile.validator.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -79,13 +80,14 @@ export async function createNotificationsForUsers({
   let emailed_count = 0;
 
   if (sendEmail) {
-    const users = await prisma.user.findMany({
+    const allowedUserIds = await filterUsersByEmailPreference(uniqueUserIds, type);
+    const users = (await prisma.user.findMany({
       where: {
-        user_id: { in: uniqueUserIds },
+        user_id: { in: allowedUserIds },
         isActive: true,
       },
       select: { user_id: true, email: true },
-    });
+    })) || [];
 
     for (const user of users) {
       const sent = await safeSendMail({
@@ -112,6 +114,25 @@ export async function createNotificationsForUsers({
     created_count: created.count,
     emailed_count,
   };
+}
+
+async function filterUsersByEmailPreference(userIds, type) {
+  const category = NOTIFICATION_EMAIL_CATEGORY[type];
+  if (!category || userIds.length === 0) {
+    return userIds;
+  }
+
+  const optedOut = await prisma.notificationPreference.findMany({
+    where: {
+      user_id: { in: userIds },
+      category,
+      email_enabled: false,
+    },
+    select: { user_id: true },
+  });
+
+  const blocked = new Set((optedOut || []).map((row) => row.user_id));
+  return userIds.filter((id) => !blocked.has(id));
 }
 
 async function getStudentUserIdsForAssignment(assignment) {

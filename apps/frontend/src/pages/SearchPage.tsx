@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchCampusSearch, fetchRecentSearches } from "../services/campus";
+import { fetchCampusSearch, fetchRecentSearches, fetchSubjects } from "../services/campus";
 
 type SearchHit = {
   id: string | number;
@@ -27,6 +27,10 @@ export default function SearchPage() {
 
   const [query, setQuery] = useState("");
   const [type, setType] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [subjects, setSubjects] = useState<{ subject_id: number; subject_code: string; subject_name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -66,6 +70,17 @@ export default function SearchPage() {
     }
 
     loadRecent();
+    fetchSubjects()
+      .then((rows) => {
+        if (!cancelled) {
+          setSubjects(Array.isArray(rows) ? rows : []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSubjects([]);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -88,6 +103,9 @@ export default function SearchPage() {
         const payload = await fetchCampusSearch({
           q,
           ...(type ? { type } : {}),
+          ...(subjectId ? { subject_id: Number(subjectId) } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
         });
         const nextHits = payload.groups.flatMap((group: { items?: SearchHit[] }) =>
           Array.isArray(group.items) ? group.items : []
@@ -111,7 +129,7 @@ export default function SearchPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [query, type]);
+  }, [query, type, subjectId, from, to]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f7f6", padding: "40px", boxSizing: "border-box" }}>
@@ -142,6 +160,28 @@ export default function SearchPage() {
             fontSize: "1rem",
           }}
         />
+
+        <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: "16px" }}>
+          <label style={{ display: "grid", gap: "6px", color: "#4d625c", fontSize: "0.82rem", fontWeight: 700 }}>
+            Subject
+            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} style={filterInput}>
+              <option value="">All subjects</option>
+              {subjects.map((subject) => (
+                <option key={subject.subject_id} value={subject.subject_id}>
+                  {subject.subject_code} — {subject.subject_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: "6px", color: "#4d625c", fontSize: "0.82rem", fontWeight: 700 }}>
+            From
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={filterInput} />
+          </label>
+          <label style={{ display: "grid", gap: "6px", color: "#4d625c", fontSize: "0.82rem", fontWeight: 700 }}>
+            To
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={filterInput} />
+          </label>
+        </div>
 
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
           {typeFilters.map((filter) => (
@@ -232,4 +272,15 @@ const card = {
   borderRadius: "16px",
   padding: "16px 18px",
   color: "#6a827b",
+};
+
+const filterInput = {
+  width: "100%",
+  boxSizing: "border-box" as const,
+  padding: "10px 12px",
+  borderRadius: "12px",
+  border: "1px solid #c5d4ce",
+  background: "#fff",
+  color: "#12241f",
+  fontWeight: 600,
 };

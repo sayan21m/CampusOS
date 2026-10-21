@@ -24,6 +24,8 @@ import {
   ProfileSection,
   ProfileSkeleton,
 } from "../components/profile/ProfileBlocks";
+import ProfileSettings from "../components/profile/ProfileSettings";
+import { fetchProfilePhotoUrl } from "../services/campus";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
@@ -50,8 +52,10 @@ const FacultyProfile = () => {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +100,15 @@ const FacultyProfile = () => {
             accountStatus: Boolean(data.accountStatus),
           });
         }
+
+        if (data.photo_url) {
+          const blobUrl = await fetchProfilePhotoUrl().catch(() => null);
+          if (!cancelled) {
+            setPhotoUrl(blobUrl);
+          }
+        } else if (!cancelled) {
+          setPhotoUrl(null);
+        }
       } catch (err) {
         if (!cancelled) {
           const message = err?.response?.data?.message || "Failed to load faculty profile details.";
@@ -114,7 +127,7 @@ const FacultyProfile = () => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, reloadKey]);
 
   const displayName = profile?.name || user?.name || "Faculty";
 
@@ -182,7 +195,7 @@ const FacultyProfile = () => {
         <ProfileHero
           name={profile.name}
           roleLabel={formatRole(profile.role)}
-          photoUrl={profile.profilePhoto}
+          photoUrl={photoUrl || profile.profilePhoto}
           isActive={profile.accountStatus}
           facts={facts}
           actions={
@@ -224,6 +237,9 @@ const FacultyProfile = () => {
             fields={contactFields}
           />
         </div>
+        <div style={{ marginTop: "16px" }}>
+          <ProfileSettings onPhotoUpdated={() => setReloadKey((value) => value + 1)} />
+        </div>
       </>
     );
   }
@@ -233,7 +249,7 @@ const FacultyProfile = () => {
       portalLabel="Faculty Portal"
       name={displayName}
       subtitle={profile?.designation || "Faculty"}
-      photoUrl={profile?.profilePhoto || null}
+      photoUrl={photoUrl || profile?.profilePhoto || null}
       navItems={NAV_ITEMS}
       onLogout={logout}
     >

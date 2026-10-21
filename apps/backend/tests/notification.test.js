@@ -26,6 +26,9 @@ const mockPrisma = {
     update: jest.fn(),
     updateMany: jest.fn(),
   },
+  notificationPreference: {
+    findMany: jest.fn(),
+  },
 };
 
 const mockSendMail = jest.fn();
@@ -91,6 +94,7 @@ describe("Notification module", () => {
     jest.clearAllMocks();
     delete process.env.RESEND_API_KEY;
     delete process.env.MAIL_FROM;
+    mockPrisma.notificationPreference.findMany.mockResolvedValue([]);
   });
 
   describe("createNotificationsForUsers()", () => {
@@ -215,6 +219,38 @@ describe("Notification module", () => {
       expect(result.created_count).toBe(2);
       expect(mockSendMail).toHaveBeenCalled();
       expect(result.emailed_count).toBe(2);
+    });
+
+    test("skips email for users who opted out of notice mail", async () => {
+      process.env.RESEND_API_KEY = "test-key";
+      process.env.MAIL_FROM = "CampusOS <noreply@campusos.local>";
+      mockPrisma.user.findMany
+        .mockResolvedValueOnce([{ user_id: 1 }, { user_id: 2 }])
+        .mockResolvedValueOnce([{ user_id: 2, email: "b@test.com" }]);
+      mockPrisma.notification.createMany.mockResolvedValue({ count: 2 });
+      mockPrisma.notification.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.notificationPreference.findMany.mockResolvedValue([{ user_id: 1 }]);
+      mockSendMail.mockResolvedValue({ id: "mail-1" });
+
+      const result = await notifyNoticePublished({
+        notice_id: 8,
+        title: "Campus closed",
+        content: "Due to weather",
+        priority: "urgent",
+        target_type: "all",
+        target_value: "ALL",
+      });
+
+      expect(mockPrisma.user.findMany).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            user_id: { in: [2] },
+          }),
+        })
+      );
+      expect(result.emailed_count).toBe(1);
+      expect(mockSendMail).toHaveBeenCalledTimes(1);
     });
   });
 

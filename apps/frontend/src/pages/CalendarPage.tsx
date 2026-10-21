@@ -1,28 +1,91 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchMyAssignments, fetchWeekTimetable } from "../services/campus";
+import { fetchCalendarEntries, fetchMyAssignments, fetchWeekTimetable, toDateKey } from "../services/campus";
+
+const TYPE_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  HOLIDAY: { bg: "#e8f3ef", color: "#0f6b57", label: "Holiday" },
+  EXAMINATION: { bg: "#fff1f0", color: "#9f2d22", label: "Exam" },
+  ASSIGNMENT_DEADLINE: { bg: "#fff4e5", color: "#8a5300", label: "Deadline" },
+  EVENT: { bg: "#e8f1fb", color: "#1d4e89", label: "Event" },
+  LAST_WORKING_DAY: { bg: "#f1ecfb", color: "#5b4b8a", label: "Last working day" },
+};
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, delta: number) {
+  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
+}
+
+function monthCells(anchor: Date) {
+  const first = startOfMonth(anchor);
+  const mondayOffset = (first.getDay() + 6) % 7;
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - mondayOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+}
+
+function entryOnDate(entry: any, dateKey: string) {
+  const start = String(entry.start_date || "").slice(0, 10);
+  const end = String(entry.end_date || entry.start_date || "").slice(0, 10);
+  return start && dateKey >= start && dateKey <= end;
+}
 
 export default function CalendarPage() {
+  const [view, setView] = useState<"month" | "week">("month");
+  const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
+  const [entries, setEntries] = useState<any[]>([]);
   const [week, setWeek] = useState<any[]>([]);
   const [deadlines, setDeadlines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [anchor, setAnchor] = useState(() => new Date());
+
+  const cells = useMemo(() => monthCells(monthAnchor), [monthAnchor]);
+  const monthLabel = monthAnchor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   useEffect(() => {
-    async function load() {
+    async function loadMonth() {
+      try {
+        setLoading(true);
+        setError("");
+        const from = toDateKey(cells[0]);
+        const to = toDateKey(cells[cells.length - 1]);
+        const rows = await fetchCalendarEntries({ from, to, include_deadlines: true });
+        setEntries(rows);
+      } catch {
+        setEntries([]);
+        setError("Unable to load calendar data from the CampusOS API.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (view === "month") {
+      loadMonth();
+    }
+  }, [view, cells]);
+
+  useEffect(() => {
+    async function loadWeek() {
       try {
         setLoading(true);
         setError("");
         const [days, assignments] = await Promise.all([
-          fetchWeekTimetable(anchor),
+          fetchWeekTimetable(weekAnchor),
           fetchMyAssignments().catch(() => []),
         ]);
         setWeek(days);
         setDeadlines(
           assignments
-            .filter((item) => item.dueDate)
-            .map((item) => ({
+            .filter((item: any) => item.dueDate)
+            .map((item: any) => ({
               id: item.id,
               title: item.title,
               subject: item.subject,
@@ -39,11 +102,13 @@ export default function CalendarPage() {
       }
     }
 
-    load();
-  }, [anchor]);
+    if (view === "week") {
+      loadWeek();
+    }
+  }, [view, weekAnchor]);
 
   function shiftWeek(delta: number) {
-    setAnchor((prev) => {
+    setWeekAnchor((prev) => {
       const next = new Date(prev);
       next.setDate(prev.getDate() + delta * 7);
       return next;
@@ -57,7 +122,7 @@ export default function CalendarPage() {
           <div>
             <h1 style={{ margin: 0, color: "#12241f" }}>Calendar</h1>
             <p style={{ margin: "6px 0 0", color: "#4d625c" }}>
-              Weekly effective timetable plus assignment deadlines from live APIs.
+              Month view with colour-coded academic events, plus the weekly timetable.
             </p>
           </div>
           <Link to="/dashboard" style={{ color: "#0f6b57", fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>
@@ -66,15 +131,37 @@ export default function CalendarPage() {
         </div>
 
         <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
-          <button type="button" onClick={() => shiftWeek(-1)} style={btnGhost}>
-            ← Previous week
+          <button type="button" onClick={() => setView("month")} style={view === "month" ? btnSolid : btnGhost}>
+            Month
           </button>
-          <button type="button" onClick={() => setAnchor(new Date())} style={btnGhost}>
-            This week
+          <button type="button" onClick={() => setView("week")} style={view === "week" ? btnSolid : btnGhost}>
+            Week
           </button>
-          <button type="button" onClick={() => shiftWeek(1)} style={btnGhost}>
-            Next week →
-          </button>
+          {view === "month" ? (
+            <>
+              <button type="button" onClick={() => setMonthAnchor((prev) => addMonths(prev, -1))} style={btnGhost}>
+                ← Previous month
+              </button>
+              <button type="button" onClick={() => setMonthAnchor(startOfMonth(new Date()))} style={btnGhost}>
+                This month
+              </button>
+              <button type="button" onClick={() => setMonthAnchor((prev) => addMonths(prev, 1))} style={btnGhost}>
+                Next month →
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => shiftWeek(-1)} style={btnGhost}>
+                ← Previous week
+              </button>
+              <button type="button" onClick={() => setWeekAnchor(new Date())} style={btnGhost}>
+                This week
+              </button>
+              <button type="button" onClick={() => shiftWeek(1)} style={btnGhost}>
+                Next week →
+              </button>
+            </>
+          )}
         </div>
 
         {error && (
@@ -85,6 +172,68 @@ export default function CalendarPage() {
 
         {loading ? (
           <div style={card}>Loading calendar...</div>
+        ) : view === "month" ? (
+          <>
+            <h2 style={{ margin: "0 0 12px", color: "#12241f", fontSize: "1.1rem" }}>{monthLabel}</h2>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
+              {Object.entries(TYPE_COLORS).map(([type, meta]) => (
+                <span key={type} style={{ background: meta.bg, color: meta.color, borderRadius: "999px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700 }}>
+                  {meta.label}
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px", marginBottom: "8px" }}>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                <div key={day} style={{ fontSize: "0.78rem", fontWeight: 800, color: "#0f6b57", padding: "0 4px" }}>
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px" }}>
+              {cells.map((date) => {
+                const key = toDateKey(date);
+                const inMonth = date.getMonth() === monthAnchor.getMonth();
+                const dayEntries = entries.filter((entry) => entryOnDate(entry, key)).slice(0, 3);
+                return (
+                  <section
+                    key={key}
+                    style={{
+                      ...card,
+                      minHeight: "110px",
+                      padding: "10px",
+                      opacity: inMonth ? 1 : 0.45,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: "#12241f", marginBottom: "8px" }}>{date.getDate()}</div>
+                    <div style={{ display: "grid", gap: "4px" }}>
+                      {dayEntries.map((entry) => {
+                        const tone = TYPE_COLORS[entry.entry_type] || TYPE_COLORS.EVENT;
+                        return (
+                          <div
+                            key={`${entry.calendar_id}-${entry.entry_type}-${entry.title}`}
+                            style={{
+                              background: tone.bg,
+                              color: tone.color,
+                              borderRadius: "8px",
+                              padding: "4px 6px",
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={entry.title}
+                          >
+                            {entry.title}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <>
             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginBottom: "24px" }}>
@@ -156,4 +305,11 @@ const btnGhost = {
   fontWeight: 700,
   color: "#0f6b57",
   cursor: "pointer",
+};
+
+const btnSolid = {
+  ...btnGhost,
+  background: "#0f6b57",
+  color: "#fff",
+  border: "1px solid #0f6b57",
 };

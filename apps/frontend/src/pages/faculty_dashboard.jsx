@@ -6,6 +6,7 @@ import {
   fetchFacultyAssignments,
   fetchNotices,
   fetchTodayTimetable,
+  toDateKey,
 } from "../services/campus";
 import "./faculty_dashboard.css";
 
@@ -257,11 +258,13 @@ function FacultyDashboard() {
                   <span>Subject</span>
                   <span>Status</span>
                   <span>Room</span>
+                  <span>Attendance</span>
                 </div>
                 {todayClasses.length === 0 ? (
                   <div className="table-row">
                     <span>—</span>
                     <span>No classes scheduled for today</span>
+                    <span>—</span>
                     <span>—</span>
                     <span>—</span>
                   </div>
@@ -274,6 +277,18 @@ function FacultyDashboard() {
                       </span>
                       <span>{item.status}</span>
                       <span>{item.room}</span>
+                      <span>
+                        {item.cancelled ? (
+                          "—"
+                        ) : (
+                          <Link
+                            to={`/attendance?date=${toDateKey()}&class=${item.id}`}
+                            className="mark-attendance-link"
+                          >
+                            Mark
+                          </Link>
+                        )}
+                      </span>
                     </div>
                   ))
                 )}

@@ -47,6 +47,7 @@ import {
   updateDepartment,
   updateManagedUser,
 } from "../services/campus";
+import ProfileSettings from "../components/profile/ProfileSettings";
 import "./admin-profile.css";
 
 const DAY_LABELS = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -197,6 +198,7 @@ export default function AdminProfile() {
     target_type: "all",
     target_value: "ALL",
   });
+  const [noticeFile, setNoticeFile] = useState(null);
 
   const [ttQuery, setTtQuery] = useState({ dept_id: "", semester: "5", section: "A" });
   const [ttSlots, setTtSlots] = useState([]);
@@ -555,8 +557,9 @@ export default function AdminProfile() {
   async function handleCreateNotice(event) {
     event.preventDefault();
     try {
-      await createNotice(noticeForm);
+      await createNotice(noticeForm, noticeFile);
       setNoticeForm((prev) => ({ ...prev, title: "", content: "" }));
+      setNoticeFile(null);
       await refreshCore();
       flashSuccess("Notice published.");
     } catch (err) {
@@ -1566,6 +1569,12 @@ export default function AdminProfile() {
                   <Field label="Content">
                     <textarea rows={4} value={noticeForm.content} onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })} required />
                   </Field>
+                  <Field label="Attachment (optional)">
+                    <input
+                      type="file"
+                      onChange={(e) => setNoticeFile(e.target.files?.[0] || null)}
+                    />
+                  </Field>
                   <button type="submit" className="ap-confirm-btn">Publish notice</button>
                 </form>
               </article>
@@ -1586,8 +1595,10 @@ export default function AdminProfile() {
                       <div className="ap-activity-copy">
                         <strong>
                           {notice.title} · {notice.tag}
+                          {typeof notice.read_count === "number" ? ` · ${notice.read_count} opened` : ""}
                         </strong>
                         <p>{notice.content}</p>
+                        {notice.has_attachment ? <p>Attachment available</p> : null}
                       </div>
                       <time>{notice.date}</time>
                     </div>
@@ -1617,6 +1628,7 @@ export default function AdminProfile() {
                   <button type="submit" className="ap-confirm-btn">Update password</button>
                 </form>
               </article>
+              <ProfileSettings />
             </section>
           )}
         </div>
