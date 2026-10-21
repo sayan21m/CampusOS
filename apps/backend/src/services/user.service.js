@@ -60,7 +60,36 @@ const USER_LIST_INCLUDE = {
   },
 };
 
-export async function listUsers({ role, isActive, search } = {}) {
+function parseListFilters(query = {}) {
+  const filters = {};
+
+  if (query.role) {
+    const role = String(query.role).trim().toUpperCase();
+    if (!["STUDENT", "FACULTY", "ADMIN"].includes(role)) {
+      throw createError("Invalid role", 400);
+    }
+    filters.role = role;
+  }
+
+  if (query.isActive !== undefined && query.isActive !== "") {
+    if (query.isActive === true || query.isActive === "true") {
+      filters.isActive = true;
+    } else if (query.isActive === false || query.isActive === "false") {
+      filters.isActive = false;
+    } else {
+      throw createError("Invalid isActive", 400);
+    }
+  }
+
+  if (query.search) {
+    filters.search = String(query.search).trim();
+  }
+
+  return filters;
+}
+
+export async function listUsers(query = {}) {
+  const { role, isActive, search } = parseListFilters(query);
   const where = {};
 
   if (role) {
@@ -320,9 +349,7 @@ export async function setUserActive(userId, isActive) {
     where: { user_id: parsedId },
     data: {
       isActive,
-      ...(isActive
-        ? { failedLoginAttempts: 0, lockedUntil: null }
-        : {}),
+      ...(isActive ? { failedLoginAttempts: 0, lockedUntil: null } : {}),
     },
     include: USER_LIST_INCLUDE,
   });

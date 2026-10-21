@@ -6,7 +6,6 @@ import { uploadCsvFile } from "../middleware/upload.middleware.js";
 import {
   adminResetPasswordSchema,
   createUserSchema,
-  listUsersQuerySchema,
   updateUserSchema,
 } from "../validators/user.validator.js";
 import {
@@ -24,7 +23,7 @@ const router = express.Router();
 
 router.use(authenticate, authorize("ADMIN"));
 
-router.get("/", validate(listUsersQuerySchema, "query"), listUsersController);
+router.get("/", listUsersController);
 router.post("/", validate(createUserSchema), createUserController);
 router.post("/bulk-csv", uploadCsvFile, bulkCreateUsersController);
 router.get("/:id", getUserByIdController);

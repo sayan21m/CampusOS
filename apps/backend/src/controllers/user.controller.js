@@ -1,3 +1,4 @@
+import { listUsersQuerySchema } from "../validators/user.validator.js";
 import {
   adminResetPassword,
   bulkCreateUsersFromCsv,
@@ -10,7 +11,18 @@ import {
 
 export async function listUsersController(req, res) {
   try {
-    const users = await listUsers(req.validatedQuery || req.query);
+    const parsed = listUsersQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.issues.map((issue) => ({
+          field: issue.path[0],
+          message: issue.message,
+        })),
+      });
+    }
+
+    const users = await listUsers(parsed.data);
     return res.status(200).json({
       message: "Users retrieved successfully",
       count: users.length,

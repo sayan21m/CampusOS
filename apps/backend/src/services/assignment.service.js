@@ -1,4 +1,8 @@
 import prisma from "../config/db.js";
+import {
+  notifyAssignmentPublished,
+  safeNotify,
+} from "./notification.service.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -80,6 +84,11 @@ export async function createAssignment(assignment_data, faculty_id) {
       attachment_url,
     },
   });
+
+  await safeNotify(
+    () => notifyAssignmentPublished(assignment),
+    "assignment-published"
+  );
 
   return {
     assignment_id: assignment.assignment_id,

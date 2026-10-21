@@ -4,6 +4,10 @@ import path from "node:path";
 import { validateNotesFile } from "../validators/notes.validator.js";
 import { saveNotesFile, deleteNotesFile } from "./notes-storage.service.js";
 import { isFacultyAllocatedToSubject } from "./allocation.service.js";
+import {
+  notifyNotesUploaded,
+  safeNotify,
+} from "./notification.service.js";
 
 const STORAGE_ROOT = path.resolve("apps/backend/storage");
 
@@ -87,6 +91,11 @@ export async function createNotes(userId, notesData, file) {
         updated_at: true,
       },
     });
+
+    await safeNotify(
+      () => notifyNotesUploaded(notes, subject),
+      "notes-uploaded"
+    );
 
     return {
       ...notes,

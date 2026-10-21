@@ -20,6 +20,8 @@ model User {
 
   passwordResetTokens passwordResetToken[]
   notices             Notice[]
+  calendarEntries     AcademicCalendar[]
+  notifications       Notification[]
 
   student Student?
   faculty Faculty?
@@ -254,6 +256,34 @@ enum MaterialType {
   PREVIOUS_YEAR_PAPERS
 }
 
+enum CalendarEntryType {
+  HOLIDAY
+  EXAMINATION
+  ASSIGNMENT_DEADLINE
+  EVENT
+  LAST_WORKING_DAY
+}
+
+model AcademicCalendar {
+  calendar_id   Int               @id @default(autoincrement())
+  title         String
+  description   String?
+  entry_type    CalendarEntryType
+  start_date    DateTime          @db.Date
+  end_date      DateTime          @db.Date
+  academic_year Int
+  created_by    Int?
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
+
+  creator User? @relation(fields: [created_by], references: [user_id], onDelete: SetNull)
+
+  @@index([academic_year])
+  @@index([entry_type])
+  @@index([start_date, end_date])
+  @@index([created_by])
+}
+
 model Notes {
   notes_id    Int @id @default(autoincrement())
   subject_id  Int
@@ -276,4 +306,32 @@ model Notes {
   @@index([subject_id, unit_number])
   @@index([uploaded_by])
   @@index([academic_year])
+}
+
+enum NotificationType {
+  ASSIGNMENT_PUBLISHED
+  ASSIGNMENT_DEADLINE_48H
+  ASSIGNMENT_DEADLINE_12H
+  ASSIGNMENT_GRADED
+  NOTICE_PUBLISHED
+  NOTES_UPLOADED
+}
+
+model Notification {
+  notification_id Int              @id @default(autoincrement())
+  user_id         Int
+  title           String
+  message         String
+  type            NotificationType
+  is_read         Boolean          @default(false)
+  reference_id    Int?
+  email_sent      Boolean          @default(false)
+  created_at      DateTime         @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([user_id, type, reference_id])
+  @@index([user_id, is_read])
+  @@index([user_id, created_at])
+  @@index([type, reference_id])
 }
