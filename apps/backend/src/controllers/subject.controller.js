@@ -1,4 +1,4 @@
-import { createSubject, getMySubjects } from "../services/subject.service.js";
+import { createSubject, getMySubjects, updateSubject } from "../services/subject.service.js";
 
 export async function createSubjectController(req, res) {
   try {
@@ -23,6 +23,21 @@ export async function getMySubjectsController(req, res) {
       message: "Subjects retrieved successfully",
       count: subjects.length,
       subjects,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+export async function updateSubjectController(req, res) {
+  try {
+    const subject = await updateSubject(req.params.id, req.body);
+
+    return res.status(200).json({
+      message: "Subject updated successfully",
+      subject,
     });
   } catch (error) {
     return res.status(error.statusCode || 500).json({

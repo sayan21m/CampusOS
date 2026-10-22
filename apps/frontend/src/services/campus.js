@@ -84,6 +84,9 @@ export function mapNotice(notice) {
     read_count: notice.read_count,
     has_attachment: Boolean(notice.has_attachment || notice.attachment_url),
     created_by: notice.created_by,
+    category: notice.category || "academic",
+    target_type: notice.target_type || "all",
+    target_value: notice.target_value || "ALL",
   };
 }
 
@@ -151,6 +154,11 @@ export async function fetchFacultyAssignments() {
 export async function createAssignment(payload) {
   const { data } = await api.post("/assignments", payload);
   return data.assignment ?? data;
+}
+
+export async function updateAssignment(payloadId, payload) {
+  const { data } = await api.patch(`/assignments/${payloadId}`, payload);
+  return data.updatedAssignment ?? data.assignment ?? data;
 }
 
 export async function fetchAssignmentSubmissions(assignmentId) {
@@ -300,6 +308,11 @@ export async function createSubject(payload) {
   return data.subject;
 }
 
+export async function updateSubject(subjectId, payload) {
+  const { data } = await api.patch(`/subjects/${subjectId}`, payload);
+  return data.subject ?? data;
+}
+
 export async function createNotice(payload, file) {
   if (file) {
     const form = new FormData();
@@ -315,6 +328,16 @@ export async function createNotice(payload, file) {
 
   const { data } = await api.post("/notices", payload);
   return data.notice ?? data;
+}
+
+export async function updateNotice(noticeId, payload) {
+  const { data } = await api.patch(`/notices/${noticeId}`, payload);
+  return data.notice ?? data;
+}
+
+export async function deleteNotice(noticeId) {
+  const { data } = await api.delete(`/notices/${noticeId}`);
+  return data;
 }
 
 export async function markNoticeRead(noticeId) {
@@ -400,8 +423,28 @@ export async function createTimetableSlot(payload) {
   return data.timetable ?? data;
 }
 
+export async function updateTimetableSlot(timetableId, payload) {
+  const { data } = await api.patch(`/timetable/${timetableId}`, payload);
+  return data.slot ?? data;
+}
+
 export async function deleteTimetableSlot(timetableId) {
   const { data } = await api.delete(`/timetable/${timetableId}`);
+  return data;
+}
+
+export async function fetchTimetableExceptions(timetableId) {
+  const { data } = await api.get(`/timetable/${timetableId}/exceptions`);
+  return Array.isArray(data.exceptions) ? data.exceptions : [];
+}
+
+export async function createTimetableException(timetableId, payload) {
+  const { data } = await api.post(`/timetable/${timetableId}/exceptions`, payload);
+  return data.exception ?? data;
+}
+
+export async function deleteTimetableException(exceptionId) {
+  const { data } = await api.delete(`/timetable/exceptions/${exceptionId}`);
   return data;
 }
 

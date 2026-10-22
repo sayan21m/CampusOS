@@ -20,3 +20,29 @@ export const createSubjectSchema = z.object({
 
   is_active: z.boolean().optional(),
 });
+
+export const updateSubjectSchema = z
+  .object({
+    subject_code: z.string().trim().min(2, "Subject code must be at least 2 characters").optional(),
+    subject_name: z.string().trim().min(3, "Subject name must be atlest 3 characters").optional(),
+    dept_id: z.coerce
+      .number()
+      .int("Department ID must be an integer")
+      .positive("Department ID must be positive")
+      .optional(),
+    semester: z.coerce
+      .number()
+      .int("Semester must be an integer")
+      .min(1, "Semester must be at least 1")
+      .max(8, "Semester must not exceed 8")
+      .optional(),
+    credits: z.coerce
+      .number()
+      .int("Credit must be at integer")
+      .min(1, "Credit must be at least 1")
+      .optional(),
+    is_active: z.boolean().optional(),
+  })
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: "At least one field is required",
+  });
