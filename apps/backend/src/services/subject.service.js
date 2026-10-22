@@ -87,8 +87,7 @@ export async function getMySubjects(userId) {
 
   if (user.role === "ADMIN") {
     return prisma.subject.findMany({
-      where: { is_active: true },
-      orderBy: [{ subject_code: "asc" }],
+      orderBy: [{ is_active: "desc" }, { subject_code: "asc" }],
       select: {
         subject_id: true,
         subject_code: true,
@@ -138,7 +137,12 @@ export async function createSubject(subjectData) {
     },
   });
 
+  return mapSubject(subject);
+}
+
+function mapSubject(subject) {
   return {
+    subject_id: subject.subject_id,
     subjectId: subject.subject_id,
     subject_code: subject.subject_code,
     subject_name: subject.subject_name,
@@ -147,4 +151,58 @@ export async function createSubject(subjectData) {
     credits: subject.credits,
     is_active: subject.is_active,
   };
+}
+
+export async function updateSubject(subjectId, patch) {
+  const parsedId = Number(subjectId);
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    throw createError("Invalid subject ID", 400);
+  }
+
+  const existing = await prisma.subject.findUnique({
+    where: { subject_id: parsedId },
+  });
+
+  if (!existing) {
+    throw createError("Subject not found", 404);
+  }
+
+  if (patch.subject_code && patch.subject_code !== existing.subject_code) {
+    const codeTaken = await prisma.subject.findUnique({
+      where: { subject_code: patch.subject_code },
+    });
+    if (codeTaken) {
+      throw createError("Subject code already exists", 409);
+    }
+  }
+
+  if (patch.dept_id !== undefined) {
+    const department = await prisma.department.findUnique({
+      where: { dept_id: patch.dept_id },
+    });
+    if (!department) {
+      throw createError("Department not found", 404);
+    }
+  }
+
+  const data = {};
+  for (const key of [
+    "subject_code",
+    "subject_name",
+    "dept_id",
+    "semester",
+    "credits",
+    "is_active",
+  ]) {
+    if (patch[key] !== undefined) {
+      data[key] = patch[key];
+    }
+  }
+
+  const updated = await prisma.subject.update({
+    where: { subject_id: parsedId },
+    data,
+  });
+
+  return mapSubject(updated);
 }

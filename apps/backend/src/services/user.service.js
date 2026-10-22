@@ -218,7 +218,157 @@ export async function createUserWithProfile(payload) {
   });
 }
 
-export async function updateUser(userId, patch) {
+function pickDefined(source, keys) {
+  const data = {};
+  for (const key of keys) {
+    if (source[key] !== undefined) {
+      data[key] = source[key];
+    }
+  }
+  return data;
+}
+
+function missingRequired(source, keys) {
+  return keys.filter((key) => source[key] === undefined || source[key] === "");
+}
+
+async function upsertStudentProfile(tx, existing, patch, mustCreate) {
+  const data = pickDefined(patch, [
+    "full_name",
+    "dept_id",
+    "semester",
+    "section",
+    "admission_year",
+    "phone",
+    "roll_number",
+  ]);
+
+  if (existing.student) {
+    if (data.roll_number && data.roll_number !== existing.student.roll_number) {
+      const rollTaken = await tx.student.findUnique({
+        where: { roll_number: data.roll_number },
+      });
+      if (rollTaken) {
+        throw createError("Roll number already exists", 409);
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      await tx.student.update({
+        where: { student_id: existing.student.student_id },
+        data,
+      });
+    }
+    return;
+  }
+
+  if (!mustCreate && Object.keys(data).length === 0) {
+    return;
+  }
+
+  const createData = {
+    ...data,
+    full_name: data.full_name || patch.name || existing.name,
+  };
+  const missing = missingRequired(createData, [
+    "roll_number",
+    "dept_id",
+    "semester",
+    "section",
+    "admission_year",
+    "full_name",
+  ]);
+  if (missing.length > 0) {
+    throw createError(`Student profile requires ${missing.join(", ")}`, 400);
+  }
+
+  const rollTaken = await tx.student.findUnique({
+    where: { roll_number: createData.roll_number },
+  });
+  if (rollTaken) {
+    throw createError("Roll number already exists", 409);
+  }
+
+  await tx.student.create({
+    data: {
+      user_id: existing.user_id,
+      roll_number: createData.roll_number,
+      full_name: createData.full_name,
+      dept_id: createData.dept_id,
+      semester: createData.semester,
+      section: createData.section,
+      admission_year: createData.admission_year,
+      phone: createData.phone,
+    },
+  });
+}
+
+async function upsertFacultyProfile(tx, existing, patch, mustCreate) {
+  const data = pickDefined(patch, [
+    "full_name",
+    "dept_id",
+    "designation",
+    "phone",
+    "employee_id",
+  ]);
+
+  if (existing.faculty) {
+    if (data.employee_id && data.employee_id !== existing.faculty.employee_id) {
+      const employeeTaken = await tx.faculty.findUnique({
+        where: { employee_id: data.employee_id },
+      });
+      if (employeeTaken) {
+        throw createError("Employee ID already exists", 409);
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      await tx.faculty.update({
+        where: { faculty_id: existing.faculty.faculty_id },
+        data,
+      });
+    }
+    return;
+  }
+
+  if (!mustCreate && Object.keys(data).length === 0) {
+    return;
+  }
+
+  const createData = {
+    ...data,
+    full_name: data.full_name || patch.name || existing.name,
+  };
+  const missing = missingRequired(createData, [
+    "employee_id",
+    "dept_id",
+    "designation",
+    "full_name",
+  ]);
+  if (missing.length > 0) {
+    throw createError(`Faculty profile requires ${missing.join(", ")}`, 400);
+  }
+
+  const employeeTaken = await tx.faculty.findUnique({
+    where: { employee_id: createData.employee_id },
+  });
+  if (employeeTaken) {
+    throw createError("Employee ID already exists", 409);
+  }
+
+  await tx.faculty.create({
+    data: {
+      user_id: existing.user_id,
+      employee_id: createData.employee_id,
+      full_name: createData.full_name,
+      dept_id: createData.dept_id,
+      designation: createData.designation,
+      phone: createData.phone,
+    },
+  });
+}
+
+export async function updateUser(userId, patch, actor = {}) {
   const parsedId = Number(userId);
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
     throw createError("Invalid user ID", 400);
@@ -231,6 +381,22 @@ export async function updateUser(userId, patch) {
 
   if (!existing) {
     throw createError("User not found", 404);
+  }
+
+  const nextRole = patch.role ?? existing.role;
+  const roleChanged = patch.role !== undefined && patch.role !== existing.role;
+
+  if (roleChanged && Number(actor.userId) === parsedId) {
+    throw createError("You cannot change your own role", 403);
+  }
+
+  if (roleChanged && existing.role === "ADMIN" && nextRole !== "ADMIN") {
+    const adminCount = await prisma.user.count({
+      where: { role: "ADMIN", isActive: true },
+    });
+    if (adminCount <= 1) {
+      throw createError("Cannot change the last active admin role", 403);
+    }
   }
 
   if (patch.email && patch.email !== existing.email) {
@@ -250,72 +416,20 @@ export async function updateUser(userId, patch) {
   }
 
   return prisma.$transaction(async (tx) => {
-    if (patch.name !== undefined || patch.email !== undefined) {
+    const userData = pickDefined(patch, ["name", "email", "role"]);
+    if (Object.keys(userData).length > 0) {
       await tx.user.update({
         where: { user_id: parsedId },
-        data: {
-          ...(patch.name !== undefined ? { name: patch.name } : {}),
-          ...(patch.email !== undefined ? { email: patch.email } : {}),
-        },
+        data: userData,
       });
     }
 
-    if (existing.role === "STUDENT" && existing.student) {
-      if (patch.roll_number && patch.roll_number !== existing.student.roll_number) {
-        const rollTaken = await tx.student.findUnique({
-          where: { roll_number: patch.roll_number },
-        });
-        if (rollTaken) {
-          throw createError("Roll number already exists", 409);
-        }
-      }
-
-      const studentData = {};
-      for (const key of [
-        "full_name",
-        "dept_id",
-        "semester",
-        "section",
-        "admission_year",
-        "phone",
-        "roll_number",
-      ]) {
-        if (patch[key] !== undefined) {
-          studentData[key] = patch[key];
-        }
-      }
-
-      if (Object.keys(studentData).length > 0) {
-        await tx.student.update({
-          where: { student_id: existing.student.student_id },
-          data: studentData,
-        });
-      }
+    if (nextRole === "STUDENT") {
+      await upsertStudentProfile(tx, existing, patch, roleChanged);
     }
 
-    if (existing.role === "FACULTY" && existing.faculty) {
-      if (patch.employee_id && patch.employee_id !== existing.faculty.employee_id) {
-        const employeeTaken = await tx.faculty.findUnique({
-          where: { employee_id: patch.employee_id },
-        });
-        if (employeeTaken) {
-          throw createError("Employee ID already exists", 409);
-        }
-      }
-
-      const facultyData = {};
-      for (const key of ["full_name", "dept_id", "designation", "phone", "employee_id"]) {
-        if (patch[key] !== undefined) {
-          facultyData[key] = patch[key];
-        }
-      }
-
-      if (Object.keys(facultyData).length > 0) {
-        await tx.faculty.update({
-          where: { faculty_id: existing.faculty.faculty_id },
-          data: facultyData,
-        });
-      }
+    if (nextRole === "FACULTY") {
+      await upsertFacultyProfile(tx, existing, patch, roleChanged);
     }
 
     const updated = await tx.user.findUnique({

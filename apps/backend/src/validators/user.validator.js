@@ -58,17 +58,20 @@ export const createUserSchema = z
     }
   });
 
+const emptyToUndefined = (value) => (value === "" || value === null ? undefined : value);
+
 export const updateUserSchema = z
   .object({
     name: z.string().trim().min(2).optional(),
     email: z.string().trim().email().optional(),
+    role: z.enum(["STUDENT", "FACULTY", "ADMIN"]).optional(),
     full_name: z.string().trim().min(1).optional(),
     dept_id: z.coerce.number().int().positive().optional(),
     semester: z.coerce.number().int().min(1).max(8).optional(),
     section: z.string().trim().min(1).optional(),
     admission_year: z.coerce.number().int().min(2000).optional(),
     designation: z.string().trim().min(3).optional(),
-    phone: phoneSchema,
+    phone: z.preprocess(emptyToUndefined, phoneSchema),
     roll_number: z.string().trim().min(2).max(15).optional(),
     employee_id: z.string().trim().min(2).max(15).optional(),
   })

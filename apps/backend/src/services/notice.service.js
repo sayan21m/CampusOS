@@ -32,22 +32,12 @@ function serializeNotice(notice, extras = {}) {
   };
 }
 
-export async function createNotice(noticeData, user_id, file) {
-  const user = await prisma.user.findUnique({
-    where: {
-      user_id,
-    },
-  });
-
-  if (!user) {
-    throw createError("User not found", 404);
+async function resolveNoticeTarget(user, target_type, target_value) {
+  if (target_type === "all") {
+    return "ALL";
   }
 
-  let { title, content, category, priority, target_type, target_value } = noticeData;
-
-  if (target_type === "all") {
-    target_value = "ALL";
-  } else if (target_type === "dept") {
+  if (target_type === "dept") {
     const departmentId = Number(target_value);
 
     if (!Number.isInteger(departmentId) || departmentId <= 0) {
@@ -67,7 +57,7 @@ export async function createNotice(noticeData, user_id, file) {
     if (user.role === "FACULTY") {
       const faculty = await prisma.faculty.findUnique({
         where: {
-          user_id,
+          user_id: user.user_id,
         },
       });
 
@@ -80,25 +70,28 @@ export async function createNotice(noticeData, user_id, file) {
       }
     }
 
-    target_value = String(departmentId);
-  } else if (target_type === "year") {
+    return String(departmentId);
+  }
+
+  if (target_type === "year") {
     const year = Number(target_value);
 
     if (!Number.isInteger(year) || year < 1 || year > 4) {
       throw createError("Invalid year", 400);
     }
 
-    target_value = String(year);
-  } else if (target_type === "section") {
-    const parts = target_value.split(":");
+    return String(year);
+  }
+
+  if (target_type === "section") {
+    const parts = String(target_value || "").split(":");
 
     if (parts.length !== 2) {
       throw createError("Invalid section target format. Use departmentId:section", 400);
     }
 
-    const dept_id_string = parts[0].trim();
+    const dept_id = Number(parts[0].trim());
     const section = parts[1].trim();
-    const dept_id = Number(dept_id_string);
 
     if (!Number.isInteger(dept_id) || dept_id <= 0) {
       throw createError("Invalid department id", 400);
@@ -121,7 +114,7 @@ export async function createNotice(noticeData, user_id, file) {
     if (user.role === "FACULTY") {
       const faculty = await prisma.faculty.findUnique({
         where: {
-          user_id,
+          user_id: user.user_id,
         },
       });
 
@@ -134,8 +127,54 @@ export async function createNotice(noticeData, user_id, file) {
       }
     }
 
-    target_value = `${dept_id}:${section}`;
+    return `${dept_id}:${section}`;
   }
+
+  return target_value;
+}
+
+async function requireNoticeEditor(user_id, noticeId) {
+  const user = await prisma.user.findUnique({
+    where: { user_id },
+  });
+
+  if (!user) {
+    throw createError("User not found", 404);
+  }
+
+  if (user.role !== "ADMIN" && user.role !== "FACULTY") {
+    throw createError("Permission denied", 403);
+  }
+
+  const notice_id = parseNoticeId(noticeId);
+  const notice = await prisma.notice.findUnique({
+    where: { notice_id },
+  });
+
+  if (!notice) {
+    throw createError("Notice not found", 404);
+  }
+
+  if (user.role !== "ADMIN" && notice.created_by !== user_id) {
+    throw createError("You can only change notices you published", 403);
+  }
+
+  return { user, notice };
+}
+
+export async function createNotice(noticeData, user_id, file) {
+  const user = await prisma.user.findUnique({
+    where: {
+      user_id,
+    },
+  });
+
+  if (!user) {
+    throw createError("User not found", 404);
+  }
+
+  const { title, content, category, priority, target_type } = noticeData;
+  const target_value = await resolveNoticeTarget(user, target_type, noticeData.target_value);
 
   let notice = await prisma.notice.create({
     data: {
@@ -370,4 +409,45 @@ export async function getNoticeAttachment(user_id, noticeId) {
   );
 
   return { notice, absolutePath };
+}
+
+export async function updateNotice(user_id, noticeId, patch) {
+  const { user, notice } = await requireNoticeEditor(user_id, noticeId);
+  const data = {};
+
+  if (patch.title !== undefined) data.title = patch.title;
+  if (patch.content !== undefined) data.content = patch.content;
+  if (patch.category !== undefined) data.category = patch.category;
+  if (patch.priority !== undefined) data.priority = patch.priority;
+
+  if (patch.target_type !== undefined || patch.target_value !== undefined) {
+    const target_type = patch.target_type ?? notice.target_type;
+    const target_value = patch.target_value ?? notice.target_value;
+    data.target_type = target_type;
+    data.target_value = await resolveNoticeTarget(user, target_type, target_value);
+  }
+
+  if (Object.keys(data).length === 0) {
+    throw createError("At least one field is required", 400);
+  }
+
+  const updated = await prisma.notice.update({
+    where: { notice_id: notice.notice_id },
+    data,
+  });
+
+  return serializeNotice(updated);
+}
+
+export async function deleteNotice(user_id, noticeId) {
+  const { notice } = await requireNoticeEditor(user_id, noticeId);
+
+  await prisma.notice.delete({
+    where: { notice_id: notice.notice_id },
+  });
+
+  return {
+    notice_id: notice.notice_id,
+    message: "Notice deleted successfully",
+  };
 }

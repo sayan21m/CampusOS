@@ -162,6 +162,17 @@ describe("User management + overview", () => {
     test("updateUserSchema requires at least one field", () => {
       expect(updateUserSchema.safeParse({}).success).toBe(false);
     });
+
+    test("updateUserSchema accepts a role change", () => {
+      expect(updateUserSchema.safeParse({ role: "ADMIN" }).success).toBe(true);
+      expect(updateUserSchema.safeParse({ role: "GUEST" }).success).toBe(false);
+    });
+
+    test("updateUserSchema treats empty phone as omitted", () => {
+      const result = updateUserSchema.safeParse({ name: "Ada Lovelace", phone: "" });
+      expect(result.success).toBe(true);
+      expect(result.data.phone).toBeUndefined();
+    });
   });
 
   describe("listUsers()", () => {
@@ -246,6 +257,115 @@ describe("User management + overview", () => {
         data: { name: "Ada Lovelace" },
       });
       expect(result.name).toBe("Ada Lovelace");
+    });
+
+    test("creates a missing student profile", async () => {
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          user_id: 10,
+          name: "Ada",
+          email: "ada@test.com",
+          role: "STUDENT",
+          student: null,
+          faculty: null,
+        })
+        .mockResolvedValueOnce(mappedStudent());
+      mockPrisma.department.findUnique.mockResolvedValue({ dept_id: 80 });
+      mockPrisma.student.findUnique.mockResolvedValue(null);
+
+      await updateUser(10, {
+        full_name: "Ada Student",
+        roll_number: "CS001",
+        dept_id: 80,
+        semester: 5,
+        section: "A",
+        admission_year: 2024,
+      });
+
+      expect(mockPrisma.student.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          user_id: 10,
+          roll_number: "CS001",
+          dept_id: 80,
+        }),
+      });
+    });
+
+    test("changes a student to faculty and creates the faculty profile", async () => {
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          user_id: 10,
+          name: "Ada",
+          email: "ada@test.com",
+          role: "STUDENT",
+          student: { student_id: 1, roll_number: "CS001" },
+          faculty: null,
+        })
+        .mockResolvedValueOnce(
+          mappedStudent({
+            role: "FACULTY",
+            student: null,
+            faculty: {
+              faculty_id: 2,
+              employee_id: "EMP01",
+              full_name: "Ada Faculty",
+              dept_id: 80,
+              designation: "Assistant Professor",
+              phone: null,
+              department: { dept_id: 80, dept_name: "CSE", dept_code: "SEEDCS" },
+            },
+          })
+        );
+      mockPrisma.department.findUnique.mockResolvedValue({ dept_id: 80 });
+      mockPrisma.faculty.findUnique.mockResolvedValue(null);
+
+      await updateUser(
+        10,
+        {
+          role: "FACULTY",
+          employee_id: "EMP01",
+          dept_id: 80,
+          designation: "Assistant Professor",
+        },
+        { userId: 1 }
+      );
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { user_id: 10 },
+        data: { role: "FACULTY" },
+      });
+      expect(mockPrisma.faculty.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          user_id: 10,
+          employee_id: "EMP01",
+          designation: "Assistant Professor",
+        }),
+      });
+    });
+
+    test("refuses a self role change", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        user_id: 10,
+        email: "ada@test.com",
+        role: "STUDENT",
+        student: { student_id: 1, roll_number: "CS001" },
+        faculty: null,
+      });
+
+      await expectStatus(updateUser(10, { role: "FACULTY" }, { userId: 10 }), 403);
+    });
+
+    test("refuses demoting the last active admin", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        user_id: 1,
+        email: "admin@test.com",
+        role: "ADMIN",
+        student: null,
+        faculty: null,
+      });
+      mockPrisma.user.count.mockResolvedValue(1);
+
+      await expectStatus(updateUser(1, { role: "STUDENT" }, { userId: 99 }), 403);
     });
 
     test("refuses to deactivate an admin", async () => {
