@@ -2,13 +2,15 @@ import express from "express";
 import { validate } from "../middleware/validate.middleware.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
-import { createNoticeSchema } from "../validators/notice.validator.js";
+import { createNoticeSchema, updateNoticeSchema } from "../validators/notice.validator.js";
 import { optionalSingleUpload, uploadNoticeFile } from "../middleware/upload.middleware.js";
 import {
   createNoticeController,
+  deleteNoticeController,
   downloadNoticeAttachmentController,
   getNoticeController,
   markNoticeReadController,
+  updateNoticeController,
 } from "../controllers/notice.controller.js";
 
 const router = express.Router();
@@ -36,6 +38,21 @@ router.get(
   authenticate,
   authorize("ADMIN", "FACULTY", "STUDENT"),
   downloadNoticeAttachmentController
+);
+
+router.patch(
+  "/:id",
+  authenticate,
+  authorize("ADMIN", "FACULTY"),
+  validate(updateNoticeSchema),
+  updateNoticeController
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("ADMIN", "FACULTY"),
+  deleteNoticeController
 );
 
 export default router;

@@ -68,3 +68,32 @@ export const createNoticeSchema = z.object({
 
   target_value: z.string().trim().min(1, "Target value cannot be empty"),
 });
+
+export const updateNoticeSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, "Title cannot be empty")
+      .max(200, "Title must not exceed 200 characters")
+      .optional(),
+    content: z.string().trim().min(1, "Content cannot be empty").optional(),
+    category: z
+      .enum(["academic", "exam", "event", "holiday", "urgent"], "Invalid notice category")
+      .optional(),
+    priority: z.enum(["normal", "important", "urgent"], "Invalid notice priority").optional(),
+    target_type: z.enum(["all", "dept", "year", "section"], "Invalid target type").optional(),
+    target_value: z.string().trim().min(1, "Target value cannot be empty").optional(),
+  })
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: "At least one field is required",
+  })
+  .superRefine((data, ctx) => {
+    if (data.target_type && data.target_type !== "all" && data.target_value === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["target_value"],
+        message: "Target value is required when changing target type",
+      });
+    }
+  });

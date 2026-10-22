@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import express from "express";
-import { createNoticeSchema } from "../src/validators/notice.validator.js";
+import { createNoticeSchema, updateNoticeSchema } from "../src/validators/notice.validator.js";
 import { authorize } from "../src/middleware/role.middleware.js";
 import { validate } from "../src/middleware/validate.middleware.js";
 
@@ -20,6 +20,7 @@ const mockPrisma = {
   notice: {
     create: jest.fn(),
     findMany: jest.fn(),
+    findUnique: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
   },
@@ -40,7 +41,8 @@ jest.unstable_mockModule("../src/utils/jwt.js", () => ({
   verifyToken: mockVerifyToken,
 }));
 
-const { createNotice, getNotice, markNoticeRead } = await import("../src/services/notice.service.js");
+const { createNotice, deleteNotice, getNotice, markNoticeRead, updateNotice } =
+  await import("../src/services/notice.service.js");
 const { createNoticeController, getNoticeController } =
   await import("../src/controllers/notice.controller.js");
 const { authenticate } = await import("../src/middleware/auth.middleware.js");
@@ -384,6 +386,39 @@ describe("Notice module", () => {
         createNotice(baseNoticeInput({ target_type: "section", target_value: "9:A" }), 2),
         403
       );
+    });
+  });
+
+  describe("updateNotice / deleteNotice", () => {
+    test("admin updates notice title", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.notice.findUnique.mockResolvedValue(createdNotice({ created_by: 10 }));
+      mockPrisma.notice.update.mockResolvedValue(createdNotice({ title: "Updated schedule" }));
+
+      const result = await updateNotice(1, 1, { title: "Updated schedule" });
+
+      expect(mockPrisma.notice.update).toHaveBeenCalledWith({
+        where: { notice_id: 1 },
+        data: { title: "Updated schedule" },
+      });
+      expect(result.title).toBe("Updated schedule");
+    });
+
+    test("faculty cannot edit another author's notice", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 2, role: "FACULTY" });
+      mockPrisma.notice.findUnique.mockResolvedValue(createdNotice({ created_by: 10 }));
+
+      await expectStatus(updateNotice(2, 1, { title: "Nope" }), 403);
+    });
+
+    test("admin deletes a notice", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ user_id: 1, role: "ADMIN" });
+      mockPrisma.notice.findUnique.mockResolvedValue(createdNotice());
+      mockPrisma.notice.delete.mockResolvedValue(createdNotice());
+
+      const result = await deleteNotice(1, 1);
+      expect(mockPrisma.notice.delete).toHaveBeenCalledWith({ where: { notice_id: 1 } });
+      expect(result.notice_id).toBe(1);
     });
   });
 
@@ -936,6 +971,11 @@ describe("Notice module", () => {
         target_type: "year",
         target_value: "2",
       });
+    });
+
+    test("updateNoticeSchema requires at least one field", () => {
+      expect(updateNoticeSchema.safeParse({}).success).toBe(false);
+      expect(updateNoticeSchema.safeParse({ title: "Updated title" }).success).toBe(true);
     });
 
     test("notice router exposes authenticated POST and GET handlers", () => {

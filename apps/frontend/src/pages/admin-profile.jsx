@@ -31,10 +31,13 @@ import {
   createManagedUser,
   createNotice,
   createSubject,
+  createTimetableException,
   createTimetableSlot,
   deactivateUser,
   deleteAllocation,
   deleteCalendarEntry,
+  deleteNotice,
+  deleteTimetableException,
   deleteTimetableSlot,
   fetchAdminOverview,
   fetchAllocations,
@@ -42,11 +45,15 @@ import {
   fetchDepartments,
   fetchNotices,
   fetchSubjects,
+  fetchTimetableExceptions,
   fetchTimetableSlots,
   fetchUsers,
   updateCalendarEntry,
   updateDepartment,
   updateManagedUser,
+  updateNotice,
+  updateSubject,
+  updateTimetableSlot,
 } from "../services/campus";
 import ProfileSettings from "../components/profile/ProfileSettings";
 import "./admin-profile.css";
@@ -68,6 +75,60 @@ function emptyEditForm(departments = []) {
     designation: "",
     phone: "",
   };
+}
+
+function dateOnly(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function timeHm(value) {
+  if (!value) return "";
+  return String(value).slice(0, 5);
+}
+
+function emptyExceptionForm() {
+  return {
+    exception_type: "CANCELLED",
+    original_date: "",
+    rescheduled_date: "",
+    replacement_faculty_id: "",
+    period: "",
+    room: "",
+    start_time: "",
+    end_time: "",
+    reason: "",
+  };
+}
+
+function buildExceptionPayload(form) {
+  const payload = {
+    exception_type: form.exception_type,
+    original_date: form.original_date,
+  };
+
+  if (form.reason.trim()) {
+    payload.reason = form.reason.trim();
+  }
+
+  if (form.exception_type === "FACULTY_SUBSTITUTION" || form.exception_type === "RESCHEDULED") {
+    if (form.replacement_faculty_id) {
+      payload.replacement_faculty_id = Number(form.replacement_faculty_id);
+    }
+  }
+
+  if (form.exception_type === "RESCHEDULED" && form.rescheduled_date) {
+    payload.rescheduled_date = form.rescheduled_date;
+  }
+
+  if (form.exception_type === "ROOM_TIME_CHANGE" || form.exception_type === "RESCHEDULED") {
+    if (form.period) payload.period = Number(form.period);
+    if (form.room.trim()) payload.room = form.room.trim();
+    if (form.start_time.trim()) payload.start_time = timeHm(form.start_time);
+    if (form.end_time.trim()) payload.end_time = timeHm(form.end_time);
+  }
+
+  return payload;
 }
 
 function editFormFromUser(row, departments = []) {
@@ -219,6 +280,8 @@ export default function AdminProfile() {
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState(() => emptyEditForm());
   const [editSaving, setEditSaving] = useState(false);
+  const [editor, setEditor] = useState(null);
+  const [editorSaving, setEditorSaving] = useState(false);
   const [allocationForm, setAllocationForm] = useState({
     faculty_id: "",
     subject_id: "",
@@ -429,15 +492,211 @@ export default function AdminProfile() {
     }
   }
 
-  async function handleRenameDepartment(dept) {
-    const nextName = window.prompt("New department name", dept.dept_name);
-    if (!nextName || nextName.trim() === dept.dept_name) return;
+  function closeEditor() {
+    setEditor(null);
+    setEditorSaving(false);
+  }
+
+  function patchEditorForm(patch) {
+    setEditor((current) => (current ? { ...current, form: { ...current.form, ...patch } } : current));
+  }
+
+  function openDepartmentEditor(dept) {
+    setEditor({
+      type: "department",
+      id: dept.dept_id,
+      form: { dept_name: dept.dept_name, dept_code: dept.dept_code },
+    });
+  }
+
+  function openCalendarEditor(entry) {
+    setEditor({
+      type: "calendar",
+      id: entry.calendar_id,
+      form: {
+        title: entry.title || "",
+        description: entry.description || "",
+        entry_type: entry.entry_type || "HOLIDAY",
+        start_date: dateOnly(entry.start_date),
+        end_date: dateOnly(entry.end_date || entry.start_date),
+        academic_year: String(entry.academic_year || new Date().getFullYear()),
+      },
+    });
+  }
+
+  function openSubjectEditor(subject) {
+    setEditor({
+      type: "subject",
+      id: subject.subject_id,
+      form: {
+        subject_code: subject.subject_code || "",
+        subject_name: subject.subject_name || "",
+        dept_id: String(subject.dept_id || ""),
+        semester: String(subject.semester || 1),
+        credits: String(subject.credits || 1),
+        is_active: Boolean(subject.is_active),
+      },
+    });
+  }
+
+  function openSlotEditor(slot) {
+    setEditor({
+      type: "slot",
+      id: slot.timetable_id,
+      form: {
+        subject_id: String(slot.subject_id || ""),
+        faculty_id: String(slot.faculty_id || ""),
+        dept_id: String(slot.dept_id || ttForm.dept_id),
+        semester: String(slot.semester || ttForm.semester),
+        section: slot.section || ttForm.section,
+        day_of_week: String(slot.day_of_week || 1),
+        period: String(slot.period || 1),
+        room: slot.room || "",
+        start_time: timeHm(slot.start_time),
+        end_time: timeHm(slot.end_time),
+      },
+    });
+  }
+
+  async function openExceptionEditor(slot) {
     try {
-      await updateDepartment(dept.dept_id, { dept_name: nextName.trim() });
-      await refreshCore();
-      flashSuccess("Department updated.");
+      const rows = await fetchTimetableExceptions(slot.timetable_id);
+      setEditor({
+        type: "exception",
+        id: slot.timetable_id,
+        form: emptyExceptionForm(),
+        exceptions: rows,
+      });
     } catch (err) {
-      flashError(err, "Could not update department.");
+      flashError(err, "Could not load timetable exceptions.");
+    }
+  }
+
+  function openNoticeEditor(noticeRow) {
+    setEditor({
+      type: "notice",
+      id: noticeRow.id,
+      form: {
+        title: noticeRow.title || "",
+        content: noticeRow.content || "",
+        category: noticeRow.category || "academic",
+        priority: noticeRow.priority || "normal",
+        target_type: noticeRow.target_type || "all",
+        target_value: noticeRow.target_value || "ALL",
+      },
+    });
+  }
+
+  async function handleSaveEditor(event) {
+    event.preventDefault();
+    if (!editor) return;
+
+    try {
+      setEditorSaving(true);
+      if (editor.type === "department") {
+        await updateDepartment(editor.id, {
+          dept_name: editor.form.dept_name.trim(),
+          dept_code: editor.form.dept_code.trim().toUpperCase(),
+        });
+        await refreshCore();
+        flashSuccess("Department updated.");
+      } else if (editor.type === "calendar") {
+        await updateCalendarEntry(editor.id, {
+          title: editor.form.title.trim(),
+          description: editor.form.description.trim() || null,
+          entry_type: editor.form.entry_type,
+          start_date: editor.form.start_date,
+          end_date: editor.form.end_date || editor.form.start_date,
+          academic_year: Number(editor.form.academic_year),
+        });
+        await refreshCalendar();
+        flashSuccess("Calendar entry updated.");
+      } else if (editor.type === "subject") {
+        await updateSubject(editor.id, {
+          subject_code: editor.form.subject_code.trim(),
+          subject_name: editor.form.subject_name.trim(),
+          dept_id: Number(editor.form.dept_id),
+          semester: Number(editor.form.semester),
+          credits: Number(editor.form.credits),
+          is_active: Boolean(editor.form.is_active),
+        });
+        await refreshCore();
+        flashSuccess("Subject updated.");
+      } else if (editor.type === "slot") {
+        await updateTimetableSlot(editor.id, {
+          subject_id: Number(editor.form.subject_id),
+          faculty_id: Number(editor.form.faculty_id),
+          dept_id: Number(editor.form.dept_id),
+          semester: Number(editor.form.semester),
+          section: editor.form.section,
+          day_of_week: Number(editor.form.day_of_week),
+          period: Number(editor.form.period),
+          room: editor.form.room,
+          start_time: timeHm(editor.form.start_time),
+          end_time: timeHm(editor.form.end_time),
+        });
+        await handleLoadTimetable();
+        flashSuccess("Timetable slot updated.");
+      } else if (editor.type === "notice") {
+        await updateNotice(editor.id, {
+          title: editor.form.title.trim(),
+          content: editor.form.content.trim(),
+          category: editor.form.category,
+          priority: editor.form.priority,
+          target_type: editor.form.target_type,
+          target_value: editor.form.target_value.trim(),
+        });
+        await refreshCore();
+        flashSuccess("Notice updated.");
+      }
+      closeEditor();
+    } catch (err) {
+      setEditorSaving(false);
+      flashError(err, "Could not save changes.");
+    }
+  }
+
+  async function handleCreateException(event) {
+    event.preventDefault();
+    if (!editor || editor.type !== "exception") return;
+    try {
+      setEditorSaving(true);
+      await createTimetableException(editor.id, buildExceptionPayload(editor.form));
+      const rows = await fetchTimetableExceptions(editor.id);
+      setEditor((current) =>
+        current ? { ...current, form: emptyExceptionForm(), exceptions: rows } : current
+      );
+      setEditorSaving(false);
+      flashSuccess("Timetable exception created.");
+    } catch (err) {
+      setEditorSaving(false);
+      flashError(err, "Could not create exception.");
+    }
+  }
+
+  async function handleDeleteException(exceptionId) {
+    if (!window.confirm("Delete this timetable exception?")) return;
+    try {
+      await deleteTimetableException(exceptionId);
+      const rows = await fetchTimetableExceptions(editor.id);
+      setEditor((current) => (current ? { ...current, exceptions: rows } : current));
+      flashSuccess("Exception deleted.");
+    } catch (err) {
+      flashError(err, "Could not delete exception.");
+    }
+  }
+
+  async function handleDeleteNotice(noticeId) {
+    if (!window.confirm("Delete this notice?")) return;
+    try {
+      await deleteNotice(noticeId);
+      if (editor?.type === "notice" && editor.id === noticeId) {
+        closeEditor();
+      }
+      await refreshCore();
+      flashSuccess("Notice deleted.");
+    } catch (err) {
+      flashError(err, "Could not delete notice.");
     }
   }
 
@@ -741,18 +1000,6 @@ export default function AdminProfile() {
       flashSuccess("Calendar entry created.");
     } catch (err) {
       flashError(err, "Could not create calendar entry.");
-    }
-  }
-
-  async function handleRenameCalendarEntry(entry) {
-    const nextTitle = window.prompt("New title", entry.title);
-    if (!nextTitle || nextTitle.trim() === entry.title) return;
-    try {
-      await updateCalendarEntry(entry.calendar_id, { title: nextTitle.trim() });
-      await refreshCalendar();
-      flashSuccess("Calendar entry updated.");
-    } catch (err) {
-      flashError(err, "Could not update calendar entry.");
     }
   }
 
@@ -1215,8 +1462,8 @@ export default function AdminProfile() {
                           <td>{dept.dept_code}</td>
                           <td>{dept.dept_name}</td>
                           <td>
-                            <button type="button" className="ap-text-action" onClick={() => handleRenameDepartment(dept)}>
-                              Rename
+                            <button type="button" className="ap-text-action" onClick={() => openDepartmentEditor(dept)}>
+                              Edit
                             </button>
                           </td>
                         </tr>
@@ -1280,6 +1527,8 @@ export default function AdminProfile() {
                         <th>Dept</th>
                         <th>Sem</th>
                         <th>Credits</th>
+                        <th>Status</th>
+                        <th />
                       </tr>
                     </thead>
                     <tbody>
@@ -1291,11 +1540,19 @@ export default function AdminProfile() {
                           <td>{subject.dept_id}</td>
                           <td>{subject.semester}</td>
                           <td>{subject.credits}</td>
+                          <td>
+                            <span className="ap-tag">{subject.is_active ? "Active" : "Inactive"}</span>
+                          </td>
+                          <td>
+                            <button type="button" className="ap-text-action" onClick={() => openSubjectEditor(subject)}>
+                              Edit
+                            </button>
+                          </td>
                         </tr>
                       ))}
                       {subjects.length === 0 ? (
                         <tr>
-                          <td colSpan={6}>No subjects yet.</td>
+                          <td colSpan={8}>No subjects yet.</td>
                         </tr>
                       ) : null}
                     </tbody>
@@ -1500,9 +1757,17 @@ export default function AdminProfile() {
                           <td>{slot.faculty?.full_name || slot.faculty_id}</td>
                           <td>{slot.room}</td>
                           <td>
-                            <button type="button" className="ap-text-action" onClick={() => handleDeleteSlot(slot.timetable_id)}>
-                              Delete
-                            </button>
+                            <div className="ap-action-row">
+                              <button type="button" className="ap-text-action" onClick={() => openSlotEditor(slot)}>
+                                Edit
+                              </button>
+                              <button type="button" className="ap-text-action" onClick={() => openExceptionEditor(slot)}>
+                                Exception
+                              </button>
+                              <button type="button" className="ap-text-action" onClick={() => handleDeleteSlot(slot.timetable_id)}>
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1598,7 +1863,7 @@ export default function AdminProfile() {
                             <span className="ap-tag">{entry.entry_type}</span>
                           </td>
                           <td>
-                            <button type="button" className="ap-text-action" onClick={() => handleRenameCalendarEntry(entry)}>
+                            <button type="button" className="ap-text-action" onClick={() => openCalendarEditor(entry)}>
                               Edit
                             </button>
                             <button type="button" className="ap-text-action" onClick={() => handleDeleteCalendarEntry(entry.calendar_id)}>
@@ -1695,6 +1960,14 @@ export default function AdminProfile() {
                         </strong>
                         <p>{notice.content}</p>
                         {notice.has_attachment ? <p>Attachment available</p> : null}
+                        <div className="ap-action-row" style={{ marginTop: 8 }}>
+                          <button type="button" className="ap-text-action" onClick={() => openNoticeEditor(notice)}>
+                            Edit
+                          </button>
+                          <button type="button" className="ap-text-action" onClick={() => handleDeleteNotice(notice.id)}>
+                            Delete
+                          </button>
+                        </div>
                       </div>
                       <time>{notice.date}</time>
                     </div>
@@ -1729,6 +2002,462 @@ export default function AdminProfile() {
           )}
         </div>
       </main>
+
+      {editor && (
+        <div className="ap-modal-backdrop" onClick={closeEditor}>
+          <section
+            className="ap-modal is-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ap-resource-editor-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="ap-resource-editor-title">
+              {editor.type === "department" && "Edit department"}
+              {editor.type === "calendar" && "Edit calendar entry"}
+              {editor.type === "subject" && "Edit subject"}
+              {editor.type === "slot" && "Edit timetable slot"}
+              {editor.type === "exception" && `Exceptions for slot #${editor.id}`}
+              {editor.type === "notice" && "Edit notice"}
+            </h2>
+            {editor.type === "exception" ? (
+              <>
+                <div className="ap-table-wrap" style={{ marginTop: 12 }}>
+                  <table className="ap-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(editor.exceptions || []).map((row) => (
+                        <tr key={row.timetable_exception_id}>
+                          <td>{dateOnly(row.original_date)}</td>
+                          <td>{row.exception_type}</td>
+                          <td>
+                            {row.room || row.replacement_faculty?.full_name || row.reason || dateOnly(row.rescheduled_date) || "—"}
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="ap-text-action"
+                              onClick={() => handleDeleteException(row.timetable_exception_id)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {(editor.exceptions || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>No exceptions for this slot yet.</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+                <form className="ap-form-grid" onSubmit={handleCreateException}>
+                  <Field label="Exception type">
+                    <select
+                      value={editor.form.exception_type}
+                      onChange={(e) => patchEditorForm({ exception_type: e.target.value })}
+                    >
+                      {["CANCELLED", "ROOM_TIME_CHANGE", "FACULTY_SUBSTITUTION", "RESCHEDULED"].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Original date">
+                    <input
+                      type="date"
+                      value={editor.form.original_date}
+                      onChange={(e) => patchEditorForm({ original_date: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  {editor.form.exception_type === "RESCHEDULED" ? (
+                    <Field label="Rescheduled date">
+                      <input
+                        type="date"
+                        value={editor.form.rescheduled_date}
+                        onChange={(e) => patchEditorForm({ rescheduled_date: e.target.value })}
+                        required
+                      />
+                    </Field>
+                  ) : null}
+                  {editor.form.exception_type === "FACULTY_SUBSTITUTION" || editor.form.exception_type === "RESCHEDULED" ? (
+                    <Field label="Replacement faculty">
+                      <select
+                        value={editor.form.replacement_faculty_id}
+                        onChange={(e) => patchEditorForm({ replacement_faculty_id: e.target.value })}
+                        required={editor.form.exception_type === "FACULTY_SUBSTITUTION"}
+                      >
+                        <option value="">Select faculty</option>
+                        {facultyUsers.map((row) => (
+                          <option key={row.user_id} value={row.faculty.faculty_id}>
+                            {row.faculty.full_name} ({row.faculty.employee_id})
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  ) : null}
+                  {editor.form.exception_type === "ROOM_TIME_CHANGE" || editor.form.exception_type === "RESCHEDULED" ? (
+                    <>
+                      <Field label="Period">
+                        <input
+                          type="number"
+                          min={1}
+                          value={editor.form.period}
+                          onChange={(e) => patchEditorForm({ period: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Room">
+                        <input
+                          value={editor.form.room}
+                          onChange={(e) => patchEditorForm({ room: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Start time">
+                        <input
+                          value={editor.form.start_time}
+                          onChange={(e) => patchEditorForm({ start_time: e.target.value })}
+                          placeholder="09:00"
+                        />
+                      </Field>
+                      <Field label="End time">
+                        <input
+                          value={editor.form.end_time}
+                          onChange={(e) => patchEditorForm({ end_time: e.target.value })}
+                          placeholder="09:50"
+                        />
+                      </Field>
+                    </>
+                  ) : null}
+                  <Field label="Reason (optional)">
+                    <input
+                      value={editor.form.reason}
+                      onChange={(e) => patchEditorForm({ reason: e.target.value })}
+                    />
+                  </Field>
+                  <div className="ap-modal-actions ap-modal-actions-form">
+                    <button type="button" className="ap-cancel-btn" onClick={closeEditor}>
+                      Close
+                    </button>
+                    <button type="submit" className="ap-confirm-btn" disabled={editorSaving}>
+                      {editorSaving ? "Saving..." : "Add exception"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <form className="ap-form-grid" onSubmit={handleSaveEditor}>
+                {editor.type === "department" ? (
+                  <>
+                    <Field label="Department name">
+                      <input
+                        value={editor.form.dept_name}
+                        onChange={(e) => patchEditorForm({ dept_name: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Department code">
+                      <input
+                        value={editor.form.dept_code}
+                        onChange={(e) => patchEditorForm({ dept_code: e.target.value.toUpperCase() })}
+                        required
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                {editor.type === "calendar" ? (
+                  <>
+                    <Field label="Title">
+                      <input
+                        value={editor.form.title}
+                        onChange={(e) => patchEditorForm({ title: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Type">
+                      <select
+                        value={editor.form.entry_type}
+                        onChange={(e) => patchEditorForm({ entry_type: e.target.value })}
+                      >
+                        {["HOLIDAY", "EXAMINATION", "EVENT", "LAST_WORKING_DAY", "ASSIGNMENT_DEADLINE"].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Start date">
+                      <input
+                        type="date"
+                        value={editor.form.start_date}
+                        onChange={(e) => patchEditorForm({ start_date: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="End date">
+                      <input
+                        type="date"
+                        value={editor.form.end_date}
+                        onChange={(e) => patchEditorForm({ end_date: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Academic year">
+                      <input
+                        value={editor.form.academic_year}
+                        onChange={(e) => patchEditorForm({ academic_year: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Description">
+                      <input
+                        value={editor.form.description}
+                        onChange={(e) => patchEditorForm({ description: e.target.value })}
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                {editor.type === "subject" ? (
+                  <>
+                    <Field label="Subject code">
+                      <input
+                        value={editor.form.subject_code}
+                        onChange={(e) => patchEditorForm({ subject_code: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Subject name">
+                      <input
+                        value={editor.form.subject_name}
+                        onChange={(e) => patchEditorForm({ subject_name: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Department">
+                      <select
+                        value={editor.form.dept_id}
+                        onChange={(e) => patchEditorForm({ dept_id: e.target.value })}
+                        required
+                      >
+                        {departments.map((dept) => (
+                          <option key={dept.dept_id} value={dept.dept_id}>
+                            {dept.dept_code} — {dept.dept_name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Semester">
+                      <input
+                        type="number"
+                        min={1}
+                        max={8}
+                        value={editor.form.semester}
+                        onChange={(e) => patchEditorForm({ semester: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Credits">
+                      <input
+                        type="number"
+                        min={1}
+                        value={editor.form.credits}
+                        onChange={(e) => patchEditorForm({ credits: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <label className="ap-field" style={{ alignSelf: "end" }}>
+                      <span>Active</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editor.form.is_active)}
+                        onChange={(e) => patchEditorForm({ is_active: e.target.checked })}
+                      />
+                    </label>
+                  </>
+                ) : null}
+                {editor.type === "slot" ? (
+                  <>
+                    <Field label="Subject">
+                      <select
+                        value={editor.form.subject_id}
+                        onChange={(e) => patchEditorForm({ subject_id: e.target.value })}
+                        required
+                      >
+                        {subjects.map((subject) => (
+                          <option key={subject.subject_id} value={subject.subject_id}>
+                            {subject.subject_code} — {subject.subject_name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Faculty">
+                      <select
+                        value={editor.form.faculty_id}
+                        onChange={(e) => patchEditorForm({ faculty_id: e.target.value })}
+                        required
+                      >
+                        {facultyUsers.map((row) => (
+                          <option key={row.user_id} value={row.faculty.faculty_id}>
+                            {row.faculty.full_name} ({row.faculty.employee_id})
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Department">
+                      <select
+                        value={editor.form.dept_id}
+                        onChange={(e) => patchEditorForm({ dept_id: e.target.value })}
+                        required
+                      >
+                        {departments.map((dept) => (
+                          <option key={dept.dept_id} value={dept.dept_id}>
+                            {dept.dept_code}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Semester">
+                      <input
+                        type="number"
+                        min={1}
+                        max={8}
+                        value={editor.form.semester}
+                        onChange={(e) => patchEditorForm({ semester: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Section">
+                      <input
+                        value={editor.form.section}
+                        onChange={(e) => patchEditorForm({ section: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Day of week">
+                      <input
+                        type="number"
+                        min={1}
+                        max={7}
+                        value={editor.form.day_of_week}
+                        onChange={(e) => patchEditorForm({ day_of_week: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Period">
+                      <input
+                        type="number"
+                        min={1}
+                        value={editor.form.period}
+                        onChange={(e) => patchEditorForm({ period: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Room">
+                      <input
+                        value={editor.form.room}
+                        onChange={(e) => patchEditorForm({ room: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Start time">
+                      <input
+                        value={editor.form.start_time}
+                        onChange={(e) => patchEditorForm({ start_time: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="End time">
+                      <input
+                        value={editor.form.end_time}
+                        onChange={(e) => patchEditorForm({ end_time: e.target.value })}
+                        required
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                {editor.type === "notice" ? (
+                  <>
+                    <Field label="Title">
+                      <input
+                        value={editor.form.title}
+                        onChange={(e) => patchEditorForm({ title: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Category">
+                      <select
+                        value={editor.form.category}
+                        onChange={(e) => patchEditorForm({ category: e.target.value })}
+                      >
+                        {["academic", "exam", "event", "holiday", "urgent"].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Priority">
+                      <select
+                        value={editor.form.priority}
+                        onChange={(e) => patchEditorForm({ priority: e.target.value })}
+                      >
+                        {["normal", "important", "urgent"].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Target type">
+                      <select
+                        value={editor.form.target_type}
+                        onChange={(e) => patchEditorForm({ target_type: e.target.value })}
+                      >
+                        {["all", "dept", "year", "section"].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Target value">
+                      <input
+                        value={editor.form.target_value}
+                        onChange={(e) => patchEditorForm({ target_value: e.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Content">
+                      <textarea
+                        rows={4}
+                        value={editor.form.content}
+                        onChange={(e) => patchEditorForm({ content: e.target.value })}
+                        required
+                      />
+                    </Field>
+                  </>
+                ) : null}
+                <div className="ap-modal-actions ap-modal-actions-form">
+                  <button type="button" className="ap-cancel-btn" onClick={closeEditor} disabled={editorSaving}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="ap-confirm-btn" disabled={editorSaving}>
+                    {editorSaving ? "Saving..." : "Save changes"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        </div>
+      )}
 
       {editingUser && (
         <div className="ap-modal-backdrop" onClick={closeEditUser}>
