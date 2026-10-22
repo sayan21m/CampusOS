@@ -65,7 +65,9 @@ export async function createUserController(req, res) {
 
 export async function updateUserController(req, res) {
   try {
-    const user = await updateUser(req.params.id, req.body);
+    const user = await updateUser(req.params.id, req.body, {
+      userId: req.user?.userId,
+    });
     return res.status(200).json({
       message: "User updated successfully",
       user,
