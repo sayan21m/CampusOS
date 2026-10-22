@@ -546,6 +546,26 @@
   box-shadow: 0 20px 70px #0003;
 }
 
+.ap-modal.is-wide {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.ap-modal .ap-form-grid {
+  padding-top: 16px;
+}
+
+.ap-modal-actions-form {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.ap-help-span {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .ap-modal-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px; color: var(--green2); background: #e2eee3; }
 .ap-modal h2 { margin: 17px 0 7px; font: 800 21px "Manrope", sans-serif; }
 .ap-modal p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }

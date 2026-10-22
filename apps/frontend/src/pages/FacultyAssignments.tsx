@@ -8,6 +8,7 @@ import {
   fetchFacultyAssignments,
   fetchSubjects,
   gradeSubmission,
+  updateAssignment,
 } from "../services/campus";
 
 const pageShell = {
@@ -45,6 +46,14 @@ function defaultDeadline() {
   return date.toISOString().slice(0, 16);
 }
 
+function toDatetimeLocal(value: string | Date | undefined) {
+  if (!value) return defaultDeadline();
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return defaultDeadline();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
 export default function FacultyAssignments() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -56,6 +65,7 @@ export default function FacultyAssignments() {
   const [grades, setGrades] = useState<Record<number, { marks: string; feedback: string }>>({});
   const [savingId, setSavingId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     subject_id: "",
@@ -118,33 +128,66 @@ export default function FacultyAssignments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function resetAssignmentForm() {
+    setEditingId(null);
+    setForm((prev) => ({
+      ...prev,
+      title: "",
+      description: "",
+      attachment_url: "",
+      deadline: defaultDeadline(),
+      allow_late: false,
+    }));
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.assignment_id);
+    setForm({
+      subject_id: String(item.subject_id || item.subject?.subject_id || form.subject_id),
+      title: item.title || "",
+      description: item.description || "",
+      section: item.section || "ALL",
+      deadline: toDatetimeLocal(item.deadline),
+      max_marks: String(item.max_marks || 10),
+      allow_late: Boolean(item.allow_late),
+      attachment_url: item.attachment_url || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     try {
       setCreating(true);
       setError("");
       setNotice("");
-      await createAssignment({
-        subject_id: Number(form.subject_id),
-        title: form.title,
-        description: form.description,
-        section: form.section,
-        deadline: new Date(form.deadline).toISOString(),
-        max_marks: Number(form.max_marks),
-        allow_late: Boolean(form.allow_late),
-        ...(form.attachment_url.trim() ? { attachment_url: form.attachment_url.trim() } : {}),
-      });
-      setForm((prev) => ({
-        ...prev,
-        title: "",
-        description: "",
-        attachment_url: "",
-        deadline: defaultDeadline(),
-      }));
+      if (editingId) {
+        await updateAssignment(editingId, {
+          title: form.title,
+          description: form.description,
+          deadline: new Date(form.deadline).toISOString(),
+          max_marks: Number(form.max_marks),
+          allow_late: Boolean(form.allow_late),
+          ...(form.attachment_url.trim() ? { attachment_url: form.attachment_url.trim() } : {}),
+        });
+        setNotice("Assignment updated.");
+      } else {
+        await createAssignment({
+          subject_id: Number(form.subject_id),
+          title: form.title,
+          description: form.description,
+          section: form.section,
+          deadline: new Date(form.deadline).toISOString(),
+          max_marks: Number(form.max_marks),
+          allow_late: Boolean(form.allow_late),
+          ...(form.attachment_url.trim() ? { attachment_url: form.attachment_url.trim() } : {}),
+        });
+        setNotice("Assignment published.");
+      }
+      resetAssignmentForm();
       await loadAssignments();
-      setNotice("Assignment published.");
     } catch (err) {
-      setError(apiMessage(err, "Could not create assignment."));
+      setError(apiMessage(err, editingId ? "Could not update assignment." : "Could not create assignment."));
     } finally {
       setCreating(false);
     }
@@ -195,7 +238,7 @@ export default function FacultyAssignments() {
           <div>
             <h1 style={{ margin: 0, color: "#12241f" }}>Assignments</h1>
             <p style={{ margin: "6px 0 0", color: "#4d625c" }}>
-              Create assignments, review submissions, and record marks.
+              Create or edit assignments, review submissions, and record marks.
             </p>
           </div>
           <Link to="/dashboard" style={{ color: "#0f6b57", fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>
@@ -215,12 +258,15 @@ export default function FacultyAssignments() {
         )}
 
         <form onSubmit={handleCreate} style={{ ...card, marginBottom: "16px", display: "grid", gap: "12px" }}>
-          <h2 style={{ margin: 0, fontSize: "1.05rem", color: "#12241f" }}>Create assignment</h2>
+          <h2 style={{ margin: 0, fontSize: "1.05rem", color: "#12241f" }}>
+            {editingId ? "Edit assignment" : "Create assignment"}
+          </h2>
           <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <label style={{ display: "grid", gap: "6px" }}>
               <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4d625c" }}>Subject</span>
               <select
                 required
+                disabled={Boolean(editingId)}
                 value={form.subject_id}
                 onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
                 style={inputStyle}
@@ -242,6 +288,7 @@ export default function FacultyAssignments() {
                 onChange={(e) => setForm({ ...form, section: e.target.value })}
                 placeholder="ALL or A"
                 required
+                disabled={Boolean(editingId)}
                 style={inputStyle}
               />
             </label>
@@ -303,22 +350,29 @@ export default function FacultyAssignments() {
             />
             Allow late submissions
           </label>
-          <button
-            type="submit"
-            disabled={creating}
-            style={{
-              background: "#0f6b57",
-              color: "#fff",
-              border: 0,
-              borderRadius: "10px",
-              padding: "10px 16px",
-              fontWeight: 700,
-              cursor: creating ? "wait" : "pointer",
-              width: "fit-content",
-            }}
-          >
-            {creating ? "Publishing..." : "Publish assignment"}
-          </button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              type="submit"
+              disabled={creating}
+              style={{
+                background: "#0f6b57",
+                color: "#fff",
+                border: 0,
+                borderRadius: "10px",
+                padding: "10px 16px",
+                fontWeight: 700,
+                cursor: creating ? "wait" : "pointer",
+                width: "fit-content",
+              }}
+            >
+              {creating ? "Saving..." : editingId ? "Save changes" : "Publish assignment"}
+            </button>
+            {editingId ? (
+              <button type="button" onClick={resetAssignmentForm} style={btnGhost}>
+                Cancel edit
+              </button>
+            ) : null}
+          </div>
         </form>
 
         {loading ? (
@@ -338,6 +392,9 @@ export default function FacultyAssignments() {
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => startEdit(item)} style={btnGhost}>
+                      Edit
+                    </button>
                     <button type="button" onClick={() => openSubmissions(item.assignment_id)} style={btnGhost}>
                       Review submissions
                     </button>

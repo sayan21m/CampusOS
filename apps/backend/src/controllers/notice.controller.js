@@ -1,9 +1,11 @@
 import path from "node:path";
 import {
   createNotice,
+  deleteNotice,
   getNotice,
   getNoticeAttachment,
   markNoticeRead,
+  updateNotice,
 } from "../services/notice.service.js";
 import { validateNoticeAttachment } from "../validators/notice.validator.js";
 import { safeDownloadName } from "../services/file-storage.service.js";
@@ -84,6 +86,33 @@ export async function downloadNoticeAttachmentController(req, res) {
         console.error("Notice attachment stream failed:", error);
       }
     });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+export async function updateNoticeController(req, res) {
+  try {
+    const notice = await updateNotice(req.user.userId, req.params.id, req.body);
+
+    return res.status(200).json({
+      message: "Notice updated successfully",
+      notice,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+export async function deleteNoticeController(req, res) {
+  try {
+    const result = await deleteNotice(req.user.userId, req.params.id);
+
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Internal server error",

@@ -1,12 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createNotice, downloadNoticeAttachment, fetchNotices, markNoticeRead } from "../services/campus";
+import {
+  createNotice,
+  deleteNotice,
+  downloadNoticeAttachment,
+  fetchNotices,
+  markNoticeRead,
+  updateNotice,
+} from "../services/campus";
 
 export default function NoticesPage() {
-  const { user } = useAuth() as { user: { role?: string } | null };
+  const { user } = useAuth() as { user: { role?: string; user_id?: number } | null };
   const canSeeReads = user?.role === "ADMIN" || user?.role === "FACULTY";
   const canPublish = user?.role === "ADMIN" || user?.role === "FACULTY";
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [notices, setNotices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,21 +48,64 @@ export default function NoticesPage() {
     load();
   }, []);
 
+  function canManageNotice(item: any) {
+    return user?.role === "ADMIN" || item.created_by === user?.user_id;
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setNoticeForm({
+      title: item.title || "",
+      content: item.content || "",
+      category: item.category || "academic",
+      priority: item.priority || "normal",
+      target_type: item.target_type || "all",
+      target_value: item.target_value || "ALL",
+    });
+    setNoticeFile(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setNoticeForm((prev) => ({ ...prev, title: "", content: "" }));
+    setNoticeFile(null);
+  }
+
   async function handlePublish(event: FormEvent) {
     event.preventDefault();
     try {
       setPublishing(true);
       setError("");
       setNotice("");
-      await createNotice(noticeForm, noticeFile || undefined);
-      setNoticeForm((prev) => ({ ...prev, title: "", content: "" }));
-      setNoticeFile(null);
+      if (editingId) {
+        await updateNotice(editingId, noticeForm);
+        setNotice("Notice updated.");
+      } else {
+        await createNotice(noticeForm, noticeFile || undefined);
+        setNotice("Notice published.");
+      }
+      cancelEdit();
       setNotices(await fetchNotices());
-      setNotice("Notice published.");
     } catch {
-      setError("Could not publish notice.");
+      setError(editingId ? "Could not update notice." : "Could not publish notice.");
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleDelete(item: any) {
+    if (!window.confirm(`Delete notice “${item.title}”?`)) return;
+    try {
+      setError("");
+      await deleteNotice(item.id);
+      if (editingId === item.id) {
+        cancelEdit();
+      }
+      setNotices(await fetchNotices());
+      setNotice("Notice deleted.");
+    } catch {
+      setError("Could not delete notice.");
     }
   }
 
@@ -112,7 +163,9 @@ export default function NoticesPage() {
             onSubmit={handlePublish}
             style={{ background: "#fff", border: "1px solid #d7e0dc", borderRadius: "16px", padding: "18px 20px", marginBottom: "16px", display: "grid", gap: "12px" }}
           >
-            <h2 style={{ margin: 0, fontSize: "1.05rem", color: "#12241f" }}>Publish notice</h2>
+            <h2 style={{ margin: 0, fontSize: "1.05rem", color: "#12241f" }}>
+              {editingId ? "Edit notice" : "Publish notice"}
+            </h2>
             <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
               <label style={{ display: "grid", gap: "6px" }}>
                 <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4d625c" }}>Title</span>
@@ -151,13 +204,22 @@ export default function NoticesPage() {
               <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4d625c" }}>Content</span>
               <textarea required rows={3} value={noticeForm.content} onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })} style={field} />
             </label>
-            <label style={{ display: "grid", gap: "6px" }}>
-              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4d625c" }}>Attachment (optional)</span>
-              <input type="file" onChange={(e) => setNoticeFile(e.target.files?.[0] || null)} />
-            </label>
-            <button type="submit" disabled={publishing} style={{ background: "#0f6b57", color: "#fff", border: 0, borderRadius: "10px", padding: "10px 16px", fontWeight: 700, cursor: publishing ? "wait" : "pointer", width: "fit-content" }}>
-              {publishing ? "Publishing..." : "Publish notice"}
-            </button>
+            {editingId ? null : (
+              <label style={{ display: "grid", gap: "6px" }}>
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4d625c" }}>Attachment (optional)</span>
+                <input type="file" onChange={(e) => setNoticeFile(e.target.files?.[0] || null)} />
+              </label>
+            )}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="submit" disabled={publishing} style={{ background: "#0f6b57", color: "#fff", border: 0, borderRadius: "10px", padding: "10px 16px", fontWeight: 700, cursor: publishing ? "wait" : "pointer", width: "fit-content" }}>
+                {publishing ? "Saving..." : editingId ? "Save changes" : "Publish notice"}
+              </button>
+              {editingId ? (
+                <button type="button" onClick={cancelEdit} style={btnGhost}>
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
           </form>
         )}
 
@@ -231,6 +293,16 @@ export default function NoticesPage() {
                         <button type="button" onClick={() => setOpenId(null)} style={btnGhost}>
                           Collapse
                         </button>
+                        {canPublish && canManageNotice(notice) ? (
+                          <>
+                            <button type="button" onClick={() => startEdit(notice)} style={btnGhost}>
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => handleDelete(notice)} style={btnGhost}>
+                              Delete
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     </>
                   ) : (
