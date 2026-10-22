@@ -53,6 +53,45 @@ import "./admin-profile.css";
 
 const DAY_LABELS = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function emptyEditForm(departments = []) {
+  return {
+    name: "",
+    email: "",
+    role: "STUDENT",
+    full_name: "",
+    dept_id: departments[0] ? String(departments[0].dept_id) : "",
+    roll_number: "",
+    semester: "1",
+    section: "A",
+    admission_year: String(new Date().getFullYear()),
+    employee_id: "",
+    designation: "",
+    phone: "",
+  };
+}
+
+function editFormFromUser(row, departments = []) {
+  const profile = row.student || row.faculty || {};
+  return {
+    name: row.name || "",
+    email: row.email || "",
+    role: row.role || "STUDENT",
+    full_name: profile.full_name || row.name || "",
+    dept_id: profile.dept_id
+      ? String(profile.dept_id)
+      : departments[0]
+        ? String(departments[0].dept_id)
+        : "",
+    roll_number: row.student?.roll_number || "",
+    semester: String(row.student?.semester || 1),
+    section: row.student?.section || "A",
+    admission_year: String(row.student?.admission_year || new Date().getFullYear()),
+    employee_id: row.faculty?.employee_id || "",
+    designation: row.faculty?.designation || "",
+    phone: profile.phone || "",
+  };
+}
+
 const navigation = [
   { label: "Dashboard", icon: LayoutDashboard },
   { label: "Users", icon: Users },
@@ -177,6 +216,9 @@ export default function AdminProfile() {
     phone: "",
   });
   const [csvFile, setCsvFile] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState(() => emptyEditForm());
+  const [editSaving, setEditSaving] = useState(false);
   const [allocationForm, setAllocationForm] = useState({
     faculty_id: "",
     subject_id: "",
@@ -448,17 +490,58 @@ export default function AdminProfile() {
     }
   }
 
-  async function handleEditUser(row) {
-    const nextName = window.prompt("Full name", row.student?.full_name || row.faculty?.full_name || row.name);
-    if (!nextName || !nextName.trim()) return;
-    try {
-      await updateManagedUser(row.user_id, {
-        name: nextName.trim(),
-        full_name: nextName.trim(),
+  function openEditUser(row) {
+    setEditingUser(row);
+    setEditForm(editFormFromUser(row, departments));
+  }
+
+  function closeEditUser() {
+    setEditingUser(null);
+    setEditSaving(false);
+  }
+
+  async function handleSaveUser(event) {
+    event.preventDefault();
+    if (!editingUser) return;
+
+    const payload = {
+      name: editForm.name.trim(),
+      email: editForm.email.trim(),
+      role: editForm.role,
+    };
+
+    if (editForm.role === "STUDENT") {
+      Object.assign(payload, {
+        full_name: editForm.full_name.trim() || editForm.name.trim(),
+        dept_id: Number(editForm.dept_id),
+        roll_number: editForm.roll_number.trim(),
+        semester: Number(editForm.semester),
+        section: editForm.section.trim(),
+        admission_year: Number(editForm.admission_year),
       });
+    }
+
+    if (editForm.role === "FACULTY") {
+      Object.assign(payload, {
+        full_name: editForm.full_name.trim() || editForm.name.trim(),
+        dept_id: Number(editForm.dept_id),
+        employee_id: editForm.employee_id.trim(),
+        designation: editForm.designation.trim(),
+      });
+    }
+
+    if (editForm.phone.trim()) {
+      payload.phone = editForm.phone.trim();
+    }
+
+    try {
+      setEditSaving(true);
+      await updateManagedUser(editingUser.user_id, payload);
+      closeEditUser();
       await refreshUsers();
       flashSuccess("User updated.");
     } catch (err) {
+      setEditSaving(false);
       flashError(err, "Could not update user.");
     }
   }
@@ -986,16 +1069,20 @@ export default function AdminProfile() {
                           </td>
                           <td>
                             <div className="ap-action-row">
+                              <button type="button" className="ap-text-action" onClick={() => openEditUser(row)}>
+                                Edit
+                              </button>
                               {row.role !== "ADMIN" ? (
                                 <>
-                                  <button type="button" className="ap-text-action" onClick={() => handleEditUser(row)}>Edit</button>
                                   <button type="button" className="ap-text-action" onClick={() => handleToggleActive(row)}>
                                     {row.isActive ? "Deactivate" : "Activate"}
                                   </button>
-                                  <button type="button" className="ap-text-action" onClick={() => handleResetPassword(row)}>Reset password</button>
+                                  <button type="button" className="ap-text-action" onClick={() => handleResetPassword(row)}>
+                                    Reset password
+                                  </button>
                                 </>
                               ) : (
-                                <span className="ap-help">Protected</span>
+                                <span className="ap-help">Admin protected</span>
                               )}
                             </div>
                           </td>
@@ -1642,6 +1729,152 @@ export default function AdminProfile() {
           )}
         </div>
       </main>
+
+      {editingUser && (
+        <div className="ap-modal-backdrop" onClick={closeEditUser}>
+          <section
+            className="ap-modal is-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ap-edit-user-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="ap-modal-icon">
+              <Users size={23} />
+            </div>
+            <h2 id="ap-edit-user-title">Edit user</h2>
+            <p>
+              Update account details, role, and the matching student or faculty profile for{" "}
+              {editingUser.email}.
+            </p>
+            <form className="ap-form-grid" onSubmit={handleSaveUser}>
+              <Field label="Name">
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Role">
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  disabled={Number(user?.user_id) === Number(editingUser.user_id)}
+                >
+                  <option value="STUDENT">STUDENT</option>
+                  <option value="FACULTY">FACULTY</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </Field>
+              {Number(user?.user_id) === Number(editingUser.user_id) ? (
+                <p className="ap-help ap-help-span">You cannot change your own role.</p>
+              ) : null}
+              {editForm.role !== "ADMIN" ? (
+                <>
+                  <Field label="Full name">
+                    <input
+                      value={editForm.full_name}
+                      onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Department">
+                    <select
+                      value={editForm.dept_id}
+                      onChange={(e) => setEditForm({ ...editForm, dept_id: e.target.value })}
+                      required
+                    >
+                      {departments.map((dept) => (
+                        <option key={dept.dept_id} value={dept.dept_id}>
+                          {dept.dept_code} — {dept.dept_name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </>
+              ) : null}
+              {editForm.role === "STUDENT" ? (
+                <>
+                  <Field label="Roll number">
+                    <input
+                      value={editForm.roll_number}
+                      onChange={(e) => setEditForm({ ...editForm, roll_number: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  <Field label="Semester">
+                    <input
+                      type="number"
+                      min={1}
+                      max={8}
+                      value={editForm.semester}
+                      onChange={(e) => setEditForm({ ...editForm, semester: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  <Field label="Section">
+                    <input
+                      value={editForm.section}
+                      onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  <Field label="Admission year">
+                    <input
+                      type="number"
+                      value={editForm.admission_year}
+                      onChange={(e) => setEditForm({ ...editForm, admission_year: e.target.value })}
+                      required
+                    />
+                  </Field>
+                </>
+              ) : null}
+              {editForm.role === "FACULTY" ? (
+                <>
+                  <Field label="Employee ID">
+                    <input
+                      value={editForm.employee_id}
+                      onChange={(e) => setEditForm({ ...editForm, employee_id: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  <Field label="Designation">
+                    <input
+                      value={editForm.designation}
+                      onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
+                      required
+                    />
+                  </Field>
+                </>
+              ) : null}
+              {editForm.role !== "ADMIN" ? (
+                <Field label="Phone (optional)">
+                  <input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="9876543210"
+                  />
+                </Field>
+              ) : null}
+              <div className="ap-modal-actions ap-modal-actions-form">
+                <button type="button" className="ap-cancel-btn" onClick={closeEditUser} disabled={editSaving}>
+                  Cancel
+                </button>
+                <button type="submit" className="ap-confirm-btn" disabled={editSaving}>
+                  {editSaving ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {showSignOut && (
         <div className="ap-modal-backdrop" onClick={() => setShowSignOut(false)}>
